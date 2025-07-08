@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 
-const Journal = () => {
+const JournalScreen = () => {
   const [entries, setEntries] = useState([]);
-  const [newEntry, setNewEntry] = useState('');
+  const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -23,21 +24,23 @@ const Journal = () => {
     fetchEntries();
   }, []);
 
-  const handleAddEntry = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.post('/api/journal', { text: newEntry });
-      setEntries([...entries, response.data]);
-      setNewEntry('');
-    } catch (error) {
-      setError('Failed to add journal entry.');
-    } finally {
-      setLoading(false);
+  const addEntry = async () => {
+    if (text.trim()) {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.post('/api/journal', { text });
+        setEntries([response.data, ...entries]);
+        setText('');
+      } catch (error) {
+        setError('Failed to add journal entry.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleDeleteEntry = async (id) => {
+  const deleteEntry = async (id) => {
     setLoading(true);
     setError(null);
     try {
@@ -51,40 +54,95 @@ const Journal = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Journal</h1>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      <div className="mb-4">
-        <textarea
-          value={newEntry}
-          onChange={(e) => setNewEntry(e.target.value)}
-          className="w-full p-2 border rounded"
-          placeholder="Write your thoughts here..."
-        ></textarea>
-        <button
-          onClick={handleAddEntry}
-          className="bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2"
-          disabled={loading}
-        >
-          {loading ? 'Adding...' : 'Add Entry'}
-        </button>
-      </div>
-      <div className="w-full max-w-md">
-        {entries.map((entry) => (
-          <div key={entry.id} className="p-4 bg-white rounded shadow-md mb-2">
-            <p>{entry.text}</p>
-            <button
-              onClick={() => handleDeleteEntry(entry.id)}
-              className="text-red-500 hover:underline mt-2"
-              disabled={loading}
-            >
-              {loading ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
+    <View style={styles.container}>
+      <Text style={styles.title}>Journal</Text>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      <TextInput
+        style={styles.input}
+        placeholder="How are you feeling today?"
+        placeholderTextColor="#aaa"
+        value={text}
+        onChangeText={setText}
+      />
+
+      <TouchableOpacity style={styles.button} onPress={addEntry} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Adding...' : 'Add Entry'}</Text>
+      </TouchableOpacity>
+
+      <FlatList
+        data={entries}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.entryContainer}>
+            <Text style={styles.entryText}>{item.text}</Text>
+            <Text style={styles.entryDate}>{item.date}</Text>
+            <TouchableOpacity onPress={() => deleteEntry(item.id)}>
+              <Text style={styles.deleteText}>{loading ? 'Deleting...' : 'Delete'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </View>
   );
 };
 
-export default Journal;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontFamily: 'Poppins',
+    color: '#00ffff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    padding: 10,
+    color: '#fff',
+    marginBottom: 15,
+  },
+  button: {
+    backgroundColor: '#00ffff',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  buttonText: {
+    color: '#0f0f0f',
+    fontWeight: 'bold',
+  },
+  entryContainer: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  entryText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  entryDate: {
+    color: '#aaa',
+    fontSize: 12,
+    marginBottom: 5,
+  },
+  deleteText: {
+    color: '#ff0055',
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+});
+
+export default JournalScreen;
