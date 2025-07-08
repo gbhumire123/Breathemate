@@ -3,9 +3,13 @@ import json
 import librosa
 import numpy as np
 import pickle
+import os
 
 def predict(audio_path):
     try:
+        if not os.path.exists(audio_path):
+            return "Audio file not found"
+
         # Load the pre-trained model
         with open('model.pkl', 'rb') as model_file:
             model = pickle.load(model_file)

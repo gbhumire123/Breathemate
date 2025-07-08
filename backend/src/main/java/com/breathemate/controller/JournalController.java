@@ -9,6 +9,9 @@ import com.breathemate.repository.JournalRepository;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/journal")
 public class JournalController {
@@ -16,24 +19,41 @@ public class JournalController {
     @Autowired
     private JournalRepository journalRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(JournalController.class);
+
     @GetMapping
     public List<JournalEntry> getAllEntries() {
-        return journalRepository.findAll();
+        try {
+            return journalRepository.findAll();
+        } catch (Exception e) {
+            logger.error("Error fetching journal entries: {}", e.getMessage());
+            throw e;
+        }
     }
 
     @PostMapping
     public JournalEntry addEntry(@RequestBody JournalEntry entry) {
-        return journalRepository.save(entry);
+        try {
+            return journalRepository.save(entry);
+        } catch (Exception e) {
+            logger.error("Error adding journal entry: {}", e.getMessage());
+            throw e;
+        }
     }
 
     @DeleteMapping("/{id}")
     public String deleteEntry(@PathVariable Long id) {
-        Optional<JournalEntry> entry = journalRepository.findById(id);
-        if (entry.isPresent()) {
-            journalRepository.delete(entry.get());
-            return "Entry deleted successfully";
-        } else {
-            return "Entry not found";
+        try {
+            Optional<JournalEntry> entry = journalRepository.findById(id);
+            if (entry.isPresent()) {
+                journalRepository.delete(entry.get());
+                return "Entry deleted successfully";
+            } else {
+                return "Entry not found";
+            }
+        } catch (Exception e) {
+            logger.error("Error deleting journal entry: {}", e.getMessage());
+            throw e;
         }
     }
 }
