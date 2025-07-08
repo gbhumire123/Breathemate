@@ -9,10 +9,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/upload-audio")
 public class FileUploadController {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
 
     @PostMapping
     public Map<String, String> uploadAudio(@RequestParam("audio") MultipartFile file) {
@@ -37,6 +41,7 @@ public class FileUploadController {
             response.put("message", "File uploaded successfully");
             response.put("prediction", output.toString());
         } catch (Exception e) {
+            logger.error("Error uploading audio file: {}", e.getMessage());
             response.put("message", "Failed to upload file");
             response.put("error", e.getMessage());
         }

@@ -16,7 +16,7 @@ public class PredictionHistoryController {
     private PredictionHistoryRepository predictionHistoryRepository;
 
     @GetMapping
-    public List<PredictionHistory> getAllHistory() {
+    public List<PredictionHistory> getPredictionHistory() {
         return predictionHistoryRepository.findAll();
     }
 }
