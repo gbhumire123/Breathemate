@@ -22,6 +22,7 @@ import Dashboard from './Dashboard';
 import Journal from './Journal';
 import Report from './Report';
 import RecordBreath from './RecordBreath';
+import SettingsPage from './Settings';
 
 // Theme Context
 const ThemeContext = React.createContext();
@@ -60,12 +61,11 @@ const Sidebar = ({ isOpen, setIsOpen, currentPath, darkMode, toggleDarkMode }) =
 
       {/* Sidebar */}
       <motion.div
-        initial={{ x: -300 }}
-        animate={{ x: isOpen ? 0 : -300 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`fixed left-0 top-0 h-full w-80 bg-white/10 backdrop-blur-xl border-r border-white/20 z-50 lg:relative lg:translate-x-0 lg:z-auto ${
+        initial={false}
+        animate={{ x: 0 }}
+        className={`h-full w-80 bg-white/10 backdrop-blur-xl border-r border-white/20 ${
           darkMode ? 'lg:bg-slate-900/50' : 'lg:bg-white/90'
-        }`}
+        } ${isOpen ? 'fixed inset-y-0 left-0 z-50 lg:relative lg:z-auto' : 'hidden lg:block lg:relative'}`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -273,7 +273,7 @@ const MainLayout = ({ children, darkMode, toggleDarkMode }) => {
   const location = useLocation();
 
   return (
-    <div className={`min-h-screen transition-colors ${
+    <div className={`min-h-screen w-full transition-colors ${
       darkMode 
         ? 'bg-slate-900 text-white' 
         : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-900'
@@ -299,7 +299,7 @@ const MainLayout = ({ children, darkMode, toggleDarkMode }) => {
         />
       </div>
 
-      <div className="flex relative z-10">
+      <div className="flex h-screen w-full relative z-10">
         <Sidebar 
           isOpen={sidebarOpen} 
           setIsOpen={setSidebarOpen} 
@@ -308,20 +308,21 @@ const MainLayout = ({ children, darkMode, toggleDarkMode }) => {
           toggleDarkMode={toggleDarkMode}
         />
         
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col w-full min-w-0">
           <TopNav 
             isOpen={sidebarOpen} 
             setIsOpen={setSidebarOpen}
             darkMode={darkMode}
           />
           
-          <main className="flex-1 p-6 lg:p-8">
+          <main className="flex-1 p-6 lg:p-8 overflow-auto w-full">
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
+              className="w-full max-w-full"
             >
               {children}
             </motion.div>
@@ -399,6 +400,11 @@ function App() {
               <Route path="/report" element={
                 <AuthGuard darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <Report />
+                </AuthGuard>
+              } />
+              <Route path="/settings" element={
+                <AuthGuard darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <SettingsPage />
                 </AuthGuard>
               } />
             </Routes>
