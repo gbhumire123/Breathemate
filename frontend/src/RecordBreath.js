@@ -204,43 +204,96 @@ const RecordBreath = () => {
         : s
     ));
 
-    // Simulate analysis delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Simulate API call to Python ML model
+      // In real implementation, this would call your backend endpoint
+      // which runs the enhanced predict.py script
+      
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate processing time
 
-    const mockResults = [
-      { 
-        pattern: 'Normal breathing', 
-        confidence: 95, 
-        recommendation: 'Breathing patterns appear healthy and consistent. Continue with regular breathing exercises.',
-        riskLevel: 'Low'
-      },
-      { 
-        pattern: 'Shallow breathing', 
-        confidence: 78, 
-        recommendation: 'Consider practicing deep breathing exercises daily to improve lung capacity.',
-        riskLevel: 'Moderate'
-      },
-      { 
-        pattern: 'Irregular rhythm', 
-        confidence: 82, 
-        recommendation: 'Monitor breathing patterns and consult healthcare provider if persistent.',
-        riskLevel: 'High'
-      },
-      {
-        pattern: 'Rapid breathing',
-        confidence: 88,
-        recommendation: 'Try relaxation techniques and monitor stress levels. Consider breathing exercises.',
-        riskLevel: 'Moderate'
-      }
-    ];
-    
-    const randomResult = mockResults[Math.floor(Math.random() * mockResults.length)];
-    
-    setSamples(prev => prev.map(s => 
-      s.id === sample.id 
-        ? { ...s, analysis: randomResult, status: 'analyzed' }
-        : s
-    ));
+      // Enhanced mock results that match the new ML model output
+      const enhancedResults = [
+        {
+          risk_percentage: 15,
+          risk_level: "Low",
+          confidence_level: "High",
+          detected_issues: [],
+          recommendation: "Continue regular health monitoring",
+          urgency: "Routine",
+          breathing_rate: 16.2,
+          analysis_details: {
+            wheezing_detected: false,
+            crackling_detected: false,
+            rhythm_regular: true,
+            breath_consistent: true
+          },
+          medical_disclaimer: "This analysis is for screening purposes only. Always consult healthcare professionals for medical diagnosis."
+        },
+        {
+          risk_percentage: 45,
+          risk_level: "Moderate",
+          confidence_level: "Medium",
+          detected_issues: ["Irregular breathing pattern", "Inconsistent breath depth"],
+          recommendation: "Schedule a medical check-up",
+          urgency: "Within 1-2 weeks",
+          breathing_rate: 22.8,
+          analysis_details: {
+            wheezing_detected: false,
+            crackling_detected: false,
+            rhythm_regular: false,
+            breath_consistent: false
+          },
+          medical_disclaimer: "This analysis is for screening purposes only. Always consult healthcare professionals for medical diagnosis."
+        },
+        {
+          risk_percentage: 78,
+          risk_level: "High",
+          confidence_level: "High",
+          detected_issues: ["Possible wheezing detected", "Abnormally fast breathing rate", "Irregular breathing pattern"],
+          recommendation: "Consult a pulmonologist immediately",
+          urgency: "Urgent",
+          breathing_rate: 28.5,
+          analysis_details: {
+            wheezing_detected: true,
+            crackling_detected: false,
+            rhythm_regular: false,
+            breath_consistent: false
+          },
+          medical_disclaimer: "This analysis is for screening purposes only. Always consult healthcare professionals for medical diagnosis."
+        },
+        {
+          risk_percentage: 32,
+          risk_level: "Low-Moderate",
+          confidence_level: "Medium",
+          detected_issues: ["Inconsistent breath depth"],
+          recommendation: "Monitor symptoms, consider medical consultation",
+          urgency: "Within 1 month",
+          breathing_rate: 19.1,
+          analysis_details: {
+            wheezing_detected: false,
+            crackling_detected: false,
+            rhythm_regular: true,
+            breath_consistent: false
+          },
+          medical_disclaimer: "This analysis is for screening purposes only. Always consult healthcare professionals for medical diagnosis."
+        }
+      ];
+      
+      const randomResult = enhancedResults[Math.floor(Math.random() * enhancedResults.length)];
+      
+      setSamples(prev => prev.map(s => 
+        s.id === sample.id 
+          ? { ...s, analysis: randomResult, status: 'analyzed' }
+          : s
+      ));
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setSamples(prev => prev.map(s => 
+        s.id === sample.id 
+          ? { ...s, status: 'error', error: 'Analysis failed. Please try again.' }
+          : s
+      ));
+    }
   };
 
   const deleteSample = (id) => {
@@ -471,46 +524,188 @@ const RecordBreath = () => {
                     </button>
                   </div>
 
-                  {/* Analysis Results */}
+                  {/* Enhanced Analysis Results */}
                   {sample.analysis && (
-                    <div className="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600">
-                      <h4 className="text-cyan-400 font-medium mb-3">🤖 AI Analysis Results</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-gray-400 text-sm">Pattern Detected</p>
-                          <p className="text-white font-medium">{sample.analysis.pattern}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-sm">Confidence Level</p>
+                    <div className="mt-4 p-6 bg-gradient-to-r from-slate-700/50 to-slate-800/50 rounded-xl border border-slate-600">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-cyan-400 font-semibold text-lg flex items-center">
+                          🧠 Medical AI Analysis
+                        </h4>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          sample.analysis.confidence_level === 'High' ? 'bg-green-500/20 text-green-400' :
+                          sample.analysis.confidence_level === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {sample.analysis.confidence_level} Confidence
+                        </span>
+                      </div>
+
+                      {/* Risk Assessment */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-slate-800/50 p-4 rounded-lg">
+                          <p className="text-gray-400 text-sm mb-1">Risk Level</p>
                           <div className="flex items-center space-x-2">
-                            <div className="flex-1 bg-gray-600 rounded-full h-2">
-                              <div
-                                className="bg-cyan-400 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${sample.analysis.confidence}%` }}
-                              />
-                            </div>
-                            <span className="text-white font-medium text-sm">{sample.analysis.confidence}%</span>
+                            <span className={`text-lg font-bold ${
+                              sample.analysis.risk_level === 'Low' ? 'text-green-400' :
+                              sample.analysis.risk_level === 'Moderate' || sample.analysis.risk_level === 'Low-Moderate' ? 'text-yellow-400' :
+                              'text-red-400'
+                            }`}>
+                              {sample.analysis.risk_percentage}%
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              sample.analysis.risk_level === 'Low' ? 'bg-green-500/20 text-green-400' :
+                              sample.analysis.risk_level === 'Moderate' || sample.analysis.risk_level === 'Low-Moderate' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {sample.analysis.risk_level}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-500 ${
+                                sample.analysis.risk_percentage <= 25 ? 'bg-green-400' :
+                                sample.analysis.risk_percentage <= 50 ? 'bg-yellow-400' :
+                                sample.analysis.risk_percentage <= 75 ? 'bg-orange-400' :
+                                'bg-red-400'
+                              }`}
+                              style={{ width: `${sample.analysis.risk_percentage}%` }}
+                            />
                           </div>
                         </div>
-                      </div>
-                      
-                      {sample.analysis.riskLevel && (
-                        <div className="mt-4">
-                          <p className="text-gray-400 text-sm">Risk Level</p>
-                          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                            sample.analysis.riskLevel === 'Low' ? 'bg-green-500/20 text-green-400' :
-                            sample.analysis.riskLevel === 'Moderate' ? 'bg-yellow-500/20 text-yellow-400' :
+
+                        <div className="bg-slate-800/50 p-4 rounded-lg">
+                          <p className="text-gray-400 text-sm mb-1">Breathing Rate</p>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white text-lg font-bold">
+                              {sample.analysis.breathing_rate}
+                            </span>
+                            <span className="text-gray-400 text-sm">bpm</span>
+                          </div>
+                          <p className={`text-xs mt-1 ${
+                            sample.analysis.breathing_rate >= 12 && sample.analysis.breathing_rate <= 20 
+                              ? 'text-green-400' : 'text-yellow-400'
+                          }`}>
+                            {sample.analysis.breathing_rate >= 12 && sample.analysis.breathing_rate <= 20 
+                              ? 'Normal range' : 'Outside normal range'}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/50 p-4 rounded-lg">
+                          <p className="text-gray-400 text-sm mb-1">Urgency</p>
+                          <span className={`text-sm font-medium px-2 py-1 rounded ${
+                            sample.analysis.urgency === 'Routine' ? 'bg-green-500/20 text-green-400' :
+                            sample.analysis.urgency === 'Within 1 month' ? 'bg-yellow-500/20 text-yellow-400' :
+                            sample.analysis.urgency === 'Within 1-2 weeks' ? 'bg-orange-500/20 text-orange-400' :
                             'bg-red-500/20 text-red-400'
                           }`}>
-                            {sample.analysis.riskLevel}
+                            {sample.analysis.urgency}
                           </span>
                         </div>
-                      )}
-                      
-                      <div className="mt-4">
-                        <p className="text-gray-400 text-sm mb-1">Recommendation</p>
-                        <p className="text-white">{sample.analysis.recommendation}</p>
                       </div>
+
+                      {/* Detected Issues */}
+                      {sample.analysis.detected_issues && sample.analysis.detected_issues.length > 0 && (
+                        <div className="mb-6">
+                          <h5 className="text-orange-400 font-medium mb-3 flex items-center">
+                            ⚠️ Detected Issues
+                          </h5>
+                          <div className="space-y-2">
+                            {sample.analysis.detected_issues.map((issue, index) => (
+                              <div key={index} className="flex items-center space-x-2 bg-orange-500/10 p-2 rounded-lg">
+                                <span className="text-orange-400">•</span>
+                                <span className="text-orange-200 text-sm">{issue}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Technical Analysis Details */}
+                      {sample.analysis.analysis_details && (
+                        <div className="mb-6">
+                          <h5 className="text-cyan-400 font-medium mb-3">🔬 Technical Analysis</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                              <div className={`text-2xl mb-1 ${
+                                sample.analysis.analysis_details.wheezing_detected ? 'text-red-400' : 'text-green-400'
+                              }`}>
+                                {sample.analysis.analysis_details.wheezing_detected ? '⚠️' : '✅'}
+                              </div>
+                              <p className="text-xs text-gray-400">Wheezing</p>
+                              <p className={`text-xs font-medium ${
+                                sample.analysis.analysis_details.wheezing_detected ? 'text-red-400' : 'text-green-400'
+                              }`}>
+                                {sample.analysis.analysis_details.wheezing_detected ? 'Detected' : 'Clear'}
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                              <div className={`text-2xl mb-1 ${
+                                sample.analysis.analysis_details.crackling_detected ? 'text-red-400' : 'text-green-400'
+                              }`}>
+                                {sample.analysis.analysis_details.crackling_detected ? '⚠️' : '✅'}
+                              </div>
+                              <p className="text-xs text-gray-400">Crackling</p>
+                              <p className={`text-xs font-medium ${
+                                sample.analysis.analysis_details.crackling_detected ? 'text-red-400' : 'text-green-400'
+                              }`}>
+                                {sample.analysis.analysis_details.crackling_detected ? 'Detected' : 'Clear'}
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                              <div className={`text-2xl mb-1 ${
+                                sample.analysis.analysis_details.rhythm_regular ? 'text-green-400' : 'text-yellow-400'
+                              }`}>
+                                {sample.analysis.analysis_details.rhythm_regular ? '✅' : '⚠️'}
+                              </div>
+                              <p className="text-xs text-gray-400">Rhythm</p>
+                              <p className={`text-xs font-medium ${
+                                sample.analysis.analysis_details.rhythm_regular ? 'text-green-400' : 'text-yellow-400'
+                              }`}>
+                                {sample.analysis.analysis_details.rhythm_regular ? 'Regular' : 'Irregular'}
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                              <div className={`text-2xl mb-1 ${
+                                sample.analysis.analysis_details.breath_consistent ? 'text-green-400' : 'text-yellow-400'
+                              }`}>
+                                {sample.analysis.analysis_details.breath_consistent ? '✅' : '⚠️'}
+                              </div>
+                              <p className="text-xs text-gray-400">Consistency</p>
+                              <p className={`text-xs font-medium ${
+                                sample.analysis.analysis_details.breath_consistent ? 'text-green-400' : 'text-yellow-400'
+                              }`}>
+                                {sample.analysis.analysis_details.breath_consistent ? 'Consistent' : 'Variable'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Medical Recommendation */}
+                      <div className="mb-4">
+                        <h5 className="text-blue-400 font-medium mb-2 flex items-center">
+                          🏥 Medical Recommendation
+                        </h5>
+                        <div className={`p-3 rounded-lg border ${
+                          sample.analysis.risk_level === 'High' ? 'bg-red-500/10 border-red-500/30' :
+                          sample.analysis.risk_level === 'Moderate' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                          'bg-green-500/10 border-green-500/30'
+                        }`}>
+                          <p className="text-white text-sm">{sample.analysis.recommendation}</p>
+                        </div>
+                      </div>
+
+                      {/* Medical Disclaimer */}
+                      {sample.analysis.medical_disclaimer && (
+                        <div className="mt-4 p-3 bg-gray-600/20 rounded-lg border border-gray-500/30">
+                          <p className="text-gray-300 text-xs flex items-center">
+                            ⚖️ <span className="ml-2">{sample.analysis.medical_disclaimer}</span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
