@@ -1,148 +1,122 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 
-const JournalScreen = () => {
-  const [entries, setEntries] = useState([]);
+const Journal = () => {
+  const [entries, setEntries] = useState([
+    {
+      id: '1',
+      text: 'Feeling good today! My breathing feels much better.',
+      date: new Date().toLocaleDateString(),
+    },
+    {
+      id: '2', 
+      text: 'Had a mild cough this morning, will monitor it.',
+      date: new Date(Date.now() - 86400000).toLocaleDateString(),
+    }
+  ]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchEntries = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await axios.get('/api/journal');
-        setEntries(response.data);
-      } catch (error) {
-        setError('Failed to fetch journal entries.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEntries();
-  }, []);
 
   const addEntry = async () => {
     if (text.trim()) {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.post('/api/journal', { text });
-        setEntries([response.data, ...entries]);
+        // For now, just add locally. You can uncomment the API call when backend is ready
+        // const response = await axios.post('/api/journal', { text });
+        const newEntry = {
+          id: Date.now().toString(),
+          text: text.trim(),
+          date: new Date().toLocaleDateString(),
+        };
+        setEntries([newEntry, ...entries]);
         setText('');
+        alert('Journal entry added!');
       } catch (error) {
         setError('Failed to add journal entry.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      alert('Please enter some text');
+    }
+  };
+
+  const deleteEntry = async (id) => {
+    if (window.confirm('Are you sure you want to delete this entry?')) {
+      setLoading(true);
+      setError(null);
+      try {
+        // For now, just delete locally. You can uncomment the API call when backend is ready
+        // await axios.delete(`/api/journal/${id}`);
+        setEntries(entries.filter((entry) => entry.id !== id));
+      } catch (error) {
+        setError('Failed to delete journal entry.');
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const deleteEntry = async (id) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await axios.delete(`/api/journal/${id}`);
-      setEntries(entries.filter((entry) => entry.id !== id));
-    } catch (error) {
-      setError('Failed to delete journal entry.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Journal</Text>
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      <TextInput
-        style={styles.input}
-        placeholder="How are you feeling today?"
-        placeholderTextColor="#aaa"
-        value={text}
-        onChangeText={setText}
-      />
-
-      <TouchableOpacity style={styles.button} onPress={addEntry} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Adding...' : 'Add Entry'}</Text>
-      </TouchableOpacity>
-
-      <FlatList
-        data={entries}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.entryContainer}>
-            <Text style={styles.entryText}>{item.text}</Text>
-            <Text style={styles.entryDate}>{item.date}</Text>
-            <TouchableOpacity onPress={() => deleteEntry(item.id)}>
-              <Text style={styles.deleteText}>{loading ? 'Deleting...' : 'Delete'}</Text>
-            </TouchableOpacity>
-          </View>
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-cyan-400 mb-8 text-center">Health Journal</h1>
+        
+        {error && (
+          <div className="bg-red-900 border border-red-500 text-red-200 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
         )}
-      />
-    </View>
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <textarea
+            className="w-full p-4 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 resize-none"
+            rows={4}
+            placeholder="How are you feeling today? Record your symptoms, mood, or any observations..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+
+          <button
+            onClick={addEntry}
+            disabled={loading}
+            className="mt-4 bg-cyan-400 text-gray-900 font-bold py-3 px-6 rounded hover:bg-cyan-300 transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Adding...' : 'Add Entry'}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {entries.map((entry) => (
+            <div
+              key={entry.id}
+              className="bg-gray-800 rounded-lg p-6 border-l-4 border-cyan-400"
+            >
+              <p className="text-gray-200 mb-3 leading-relaxed">{entry.text}</p>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">{entry.date}</span>
+                <button
+                  onClick={() => deleteEntry(entry.id)}
+                  disabled={loading}
+                  className="text-red-400 hover:text-red-300 font-medium disabled:opacity-50"
+                >
+                  {loading ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {entries.length === 0 && (
+          <div className="text-center text-gray-400 py-12">
+            <p>No journal entries yet. Start by adding your first entry above!</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: 'Poppins',
-    color: '#00ffff',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 10,
-    color: '#fff',
-    marginBottom: 15,
-  },
-  button: {
-    backgroundColor: '#00ffff',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  buttonText: {
-    color: '#0f0f0f',
-    fontWeight: 'bold',
-  },
-  entryContainer: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-  },
-  entryText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  entryDate: {
-    color: '#aaa',
-    fontSize: 12,
-    marginBottom: 5,
-  },
-  deleteText: {
-    color: '#ff0055',
-    fontSize: 14,
-    textAlign: 'right',
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-});
-
-export default JournalScreen;
+export default Journal;

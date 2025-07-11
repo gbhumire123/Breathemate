@@ -1,26 +1,28 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ProgressCircle } from 'react-native-svg-charts';
+import { StatusBar } from 'expo-status-bar';
 
 const HomeScreen = () => {
   const progress = 0.75; // Example progress value
 
+  const handleBreathingTest = () => {
+    // Navigation will be handled by the parent navigator
+    console.log('Navigate to Breathing Test');
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <Text style={styles.greeting}>Good morning, Geetheswar 👋</Text>
-      <Text style={styles.tip}>Today’s Tip: Stay hydrated and take deep breaths!</Text>
+      <Text style={styles.tip}>Today's Tip: Stay hydrated and take deep breaths!</Text>
 
       <View style={styles.progressContainer}>
-        <ProgressCircle
-          style={styles.progressCircle}
-          progress={progress}
-          progressColor={'#00ffff'}
-          backgroundColor={'#1f1f1f'}
-        />
-        <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+        <View style={styles.progressCircle}>
+          <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+        </View>
       </View>
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={handleBreathingTest}>
         <Text style={styles.buttonText}>Start Breathing Test</Text>
       </TouchableOpacity>
     </View>
@@ -37,37 +39,43 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 24,
-    fontFamily: 'Poppins',
+    fontWeight: 'bold',
     color: '#00ffff',
     marginBottom: 10,
     textAlign: 'center',
   },
   tip: {
     fontSize: 16,
-    fontFamily: 'Roboto Mono',
     color: '#39ff14',
-    marginBottom: 20,
+    marginBottom: 30,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   progressContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   progressCircle: {
     height: 150,
     width: 150,
+    borderRadius: 75,
+    backgroundColor: '#1f1f1f',
+    borderWidth: 4,
+    borderColor: '#00ffff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   progressText: {
-    fontSize: 20,
-    fontFamily: 'Roboto Mono',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#00ffff',
-    marginTop: -30,
   },
   button: {
     backgroundColor: '#00ffff',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    minWidth: 200,
   },
   buttonText: {
     color: '#0f0f0f',

@@ -1,48 +1,38 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import logo from './logo.svg';
-import './App.css';
 import Login from './Login';
 import Register from './Register';
 import Dashboard from './Dashboard';
 import Journal from './Journal';
 import Report from './Report';
+import RecordBreath from './RecordBreath';
 
 function App() {
   return (
     <Router>
-      <header className="bg-blue-500 text-white p-4">
-        <nav className="flex justify-between">
-          <h1 className="text-xl font-bold">BreatheMate</h1>
-          <div>
-            <Link to="/dashboard" className="mr-4 hover:underline">Dashboard</Link>
-            <Link to="/journal" className="mr-4 hover:underline">Journal</Link>
-            <Link to="/report" className="hover:underline">Report</Link>
-          </div>
-        </nav>
-      </header>
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
+      <div className="min-h-screen bg-gray-900">
+        <header className="bg-blue-600 text-white p-4 shadow-lg">
+          <nav className="flex justify-between items-center max-w-6xl mx-auto">
+            <h1 className="text-2xl font-bold text-cyan-400">BreatheMate</h1>
+            <div className="space-x-6">
+              <Link to="/dashboard" className="hover:text-cyan-400 transition-colors">Dashboard</Link>
+              <Link to="/record-breath" className="hover:text-cyan-400 transition-colors">Record Breath</Link>
+              <Link to="/journal" className="hover:text-cyan-400 transition-colors">Journal</Link>
+              <Link to="/report" className="hover:text-cyan-400 transition-colors">Report</Link>
+            </div>
+          </nav>
         </header>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/journal" element={<Journal />} />
-          <Route path="/report" element={<Report />} />
-        </Routes>
+        
+        <main>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/record-breath" element={<RecordBreath />} />
+            <Route path="/journal" element={<Journal />} />
+            <Route path="/report" element={<Report />} />
+          </Routes>
+        </main>
       </div>
     </Router>
   );
