@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import Chart from 'chart.js/auto';
 
 const Dashboard = () => {
-  const [audioFile, setAudioFile] = useState(null);
-  const [predictionResult, setPredictionResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [journalEntry, setJournalEntry] = useState('');
+  const [user] = useState({ name: 'Geetheswar' });
+  const [todayProgress] = useState(75);
+  const [recentSessions] = useState([
+    { id: 1, date: '2024-07-12', duration: '5 min', score: 87 },
+    { id: 2, date: '2024-07-11', duration: '3 min', score: 82 },
+    { id: 3, date: '2024-07-10', duration: '8 min', score: 90 }
+  ]);
+  
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -17,116 +17,136 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  const handleSaveJournal = () => {
-    alert('Journal entry saved!');
-  };
-
-  const handleAudioUpload = async () => {
-    if (!audioFile) {
-      setError('Please record or upload an audio file first.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioFile);
-
-      const response = await axios.post('/api/upload-audio', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      setPredictionResult(response.data.prediction);
-    } catch (error) {
-      setError('Failed to upload audio file. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAudioChange = (e) => {
-    setAudioFile(e.target.files[0]);
-  };
+  const quickActions = [
+    { name: 'Record Breath', path: '/record', icon: '🎤', color: 'bg-blue-600 hover:bg-blue-700' },
+    { name: 'View Journal', path: '/journal', icon: '📝', color: 'bg-green-600 hover:bg-green-700' },
+    { name: 'Check Reports', path: '/reports', icon: '📊', color: 'bg-purple-600 hover:bg-purple-700' },
+    { name: 'Settings', path: '/settings', icon: '⚙️', color: 'bg-gray-600 hover:bg-gray-700' }
+  ];
 
   return (
-    <motion.div
-      className="min-h-screen flex flex-col bg-gray-900 text-white"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <header className="flex items-center justify-between p-4 bg-gray-800">
-        <h1 className="text-2xl font-bold">BreatheMate</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-        >
-          Logout
-        </button>
-      </header>
-      <div className="flex flex-row flex-grow">
-        <nav className="w-1/4 bg-gray-800 p-4">
-          <ul className="space-y-4">
-            <li className="hover:text-neon-green cursor-pointer">Home</li>
-            <li className="hover:text-neon-green cursor-pointer">Journal</li>
-            <li className="hover:text-neon-green cursor-pointer">Settings</li>
-          </ul>
-        </nav>
-        <main className="flex-grow p-6">
-          <h2 className="text-3xl font-bold mb-4">Welcome, User!</h2>
-          <section className="mb-6">
-            <h3 className="text-2xl font-bold mb-2">Breathing Analysis</h3>
-            <div className="bg-gray-800 p-4 rounded shadow-md">
-              <canvas id="breathingChart" width="400" height="200"></canvas>
-            </div>
-          </section>
-          <section>
-            <h3 className="text-2xl font-bold mb-2">Journal Entry</h3>
-            <textarea
-              value={journalEntry}
-              onChange={(e) => setJournalEntry(e.target.value)}
-              className="w-full p-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-neon-green"
-              rows="5"
-            ></textarea>
-            <button
-              onClick={handleSaveJournal}
-              className="mt-4 bg-neon-green text-gray-900 font-bold py-2 px-4 rounded shadow-lg hover:bg-neon-green-light"
-            >
-              Save
-            </button>
-          </section>
-          <motion.div className="mb-4" initial={{ y: -20 }} animate={{ y: 0 }} transition={{ duration: 0.3 }}>
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={handleAudioChange}
-              className="p-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </motion.div>
-          <motion.button
-            onClick={handleAudioUpload}
-            className="bg-white text-blue-600 font-bold py-2 px-4 rounded shadow-lg hover:bg-blue-100"
-            disabled={loading}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700 p-6">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-cyan-400">BreatheMate Dashboard</h1>
+            <p className="text-gray-400">Welcome back, {user.name}!</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium transition-colors"
           >
-            {loading ? 'Uploading...' : 'Upload Audio'}
-          </motion.button>
-          {predictionResult && (
-            <motion.div
-              className="mt-6 p-6 bg-white rounded shadow-md w-3/4 text-center"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-            >
-              <h2 className="text-2xl font-bold text-blue-600">Prediction Result</h2>
-              <p className="text-lg text-gray-700 mt-2">{predictionResult}</p>
-            </motion.div>
-          )}
-        </main>
+            Logout
+          </button>
+        </div>
       </div>
-    </motion.div>
+
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 className="text-cyan-400 text-sm font-medium mb-2">Today's Progress</h3>
+            <div className="flex items-center space-x-3">
+              <div className="flex-1 bg-gray-700 rounded-full h-3">
+                <div
+                  className="bg-cyan-400 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${todayProgress}%` }}
+                />
+              </div>
+              <span className="text-white font-bold">{todayProgress}%</span>
+            </div>
+          </div>
+          
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 className="text-cyan-400 text-sm font-medium mb-2">Weekly Sessions</h3>
+            <p className="text-2xl font-bold text-white">12</p>
+            <p className="text-green-400 text-sm">+3 from last week</p>
+          </div>
+          
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 className="text-cyan-400 text-sm font-medium mb-2">Average Score</h3>
+            <p className="text-2xl font-bold text-white">86</p>
+            <p className="text-green-400 text-sm">Excellent</p>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.map((action) => (
+              <button
+                key={action.name}
+                onClick={() => navigate(action.path)}
+                className={`${action.color} p-6 rounded-lg text-white font-medium transition-colors text-center`}
+              >
+                <div className="text-2xl mb-2">{action.icon}</div>
+                <div>{action.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-6">Recent Sessions</h2>
+          <div className="bg-gray-800 rounded-lg border border-gray-700">
+            {recentSessions.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="text-gray-400 text-4xl mb-4">📋</div>
+                <p className="text-gray-400">No recent sessions</p>
+                <p className="text-gray-500 text-sm mt-2">Start your first breathing session to see activity here</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-700">
+                {recentSessions.map((session, index) => (
+                  <div key={session.id} className="p-6 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-cyan-400 rounded-full flex items-center justify-center text-gray-900 font-bold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">Breathing Session</p>
+                        <p className="text-gray-400 text-sm">{session.date}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-6">
+                      <div className="text-center">
+                        <p className="text-gray-400 text-xs">Duration</p>
+                        <p className="text-white font-medium">{session.duration}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-400 text-xs">Score</p>
+                        <p className={`font-bold ${
+                          session.score >= 85 ? 'text-green-400' : 
+                          session.score >= 70 ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {session.score}
+                        </p>
+                      </div>
+                      <button className="text-cyan-400 hover:text-cyan-300 font-medium">
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Health Tips */}
+        <div className="mt-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-cyan-400 font-medium mb-4">💡 Today's Health Tip</h3>
+          <p className="text-gray-300">
+            Practice the 4-7-8 breathing technique: Inhale for 4 counts, hold for 7 counts, 
+            and exhale for 8 counts. This can help reduce stress and improve sleep quality.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 
