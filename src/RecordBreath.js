@@ -8,11 +8,13 @@ import {
   Alert,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +24,7 @@ const RecordBreathScreen = ({ navigation }) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [samples, setSamples] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef(null);
@@ -44,149 +47,166 @@ const RecordBreathScreen = ({ navigation }) => {
   };
 
   const stopPulseAnimation = () => {
-    pulseAnim.stopAnimation();
-    Animated.timing(pulseAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(pulseAnim).stop();
+    pulseAnim.setValue(1);
   };
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      console.log('Starting recording...');
       
-      if (!permission.granted) {
-        Alert.alert('Permission Required', 'Microphone permission is required to record audio.');
+      // Request permissions
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Sorry, we need microphone permissions to record audio!');
         return;
       }
 
+      // Set audio mode for recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // Create recording with high quality settings
+      const recordingOptions = {
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_MPEG_4,
+          audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.RECORDING_OPTION_IOS_OUTPUT_FORMAT_MPEG4AAC,
+          audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm;codecs=opus',
+          bitsPerSecond: 128000,
+        },
+      };
 
+      const { recording } = await Audio.Recording.createAsync(recordingOptions);
       setRecording(recording);
       setIsRecording(true);
       setRecordingTime(0);
+      
       startPulseAnimation();
-
-      // Start timer
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-
-    } catch (error) {
-      Alert.alert('Error', 'Failed to start recording: ' + error.message);
+      startTimer();
+      
+      console.log('Recording started');
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
     }
   };
 
   const stopRecording = async () => {
+    console.log('Stopping recording...');
+    setIsRecording(false);
+    stopPulseAnimation();
+    clearInterval(timerRef.current);
+    
+    if (!recording) return;
+
     try {
-      if (!recording) return;
-
-      setIsRecording(false);
-      stopPulseAnimation();
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      
+      console.log('Recording stopped and stored at', uri);
+
+      // Create sample object
       const newSample = {
         id: Date.now(),
-        uri,
+        uri: uri,
         duration: recordingTime,
         timestamp: new Date().toISOString(),
         analyzed: false,
+        platform: Platform.OS,
       };
 
       setSamples(prev => [newSample, ...prev]);
       setRecording(null);
-      setRecordingTime(0);
-
-      Alert.alert('Success', 'Recording saved! Tap "Analyze" to get AI insights.');
-
+      
+      Alert.alert('Success', 'Recording saved successfully!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to stop recording: ' + error.message);
+      console.error('Error stopping recording:', error);
+      Alert.alert('Error', 'Failed to save recording.');
     }
   };
 
-  const analyzeSample = async (sampleId) => {
-    setAnalyzing(true);
-    
-    // Simulate AI analysis
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    const analysisResults = [
-      {
-        risk_percentage: 15,
-        risk_level: "Low",
-        confidence_level: "High",
-        detected_issues: [],
-        recommendation: "Continue regular health monitoring",
-        breathing_rate: 16.2,
-        analysis_details: {
-          wheezing_detected: false,
-          crackling_detected: false,
-          rhythm_regular: true,
-          breath_consistent: true
-        }
-      },
-      {
-        risk_percentage: 45,
-        risk_level: "Moderate", 
-        confidence_level: "Medium",
-        detected_issues: ["Irregular breathing pattern"],
-        recommendation: "Schedule a medical check-up",
-        breathing_rate: 22.8,
-        analysis_details: {
-          wheezing_detected: false,
-          crackling_detected: false,
-          rhythm_regular: false,
-          breath_consistent: false
-        }
-      },
-      {
-        risk_percentage: 78,
-        risk_level: "High",
-        confidence_level: "High",
-        detected_issues: ["Possible wheezing detected", "Abnormally fast breathing rate"],
-        recommendation: "Consult a pulmonologist immediately",
-        breathing_rate: 28.5,
-        analysis_details: {
-          wheezing_detected: true,
-          crackling_detected: false,
-          rhythm_regular: false,
-          breath_consistent: false
-        }
-      }
-    ];
+  const startTimer = () => {
+    timerRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1);
+    }, 1000);
+  };
 
-    const randomResult = analysisResults[Math.floor(Math.random() * analysisResults.length)];
-    
-    setSamples(prev => prev.map(sample => 
-      sample.id === sampleId 
-        ? { ...sample, analyzed: true, analysis: randomResult }
-        : sample
-    ));
-    
-    setAnalyzing(false);
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const playRecording = async (uri) => {
     try {
+      console.log('Loading Sound');
       const { sound } = await Audio.Sound.createAsync({ uri });
+      
+      console.log('Playing Sound');
       await sound.playAsync();
+      
+      // Optional: Auto-unload the sound when it finishes playing
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to play recording');
+      console.error('Error playing sound:', error);
+      Alert.alert('Error', 'Failed to play recording.');
+    }
+  };
+
+  const analyzeSample = async (sampleId) => {
+    const sample = samples.find(s => s.id === sampleId);
+    if (!sample) return;
+
+    setAnalyzing(true);
+    try {
+      // Mock analysis for demo purposes
+      const mockAnalysis = {
+        risk_level: 'Low',
+        risk_percentage: Math.floor(Math.random() * 30) + 10,
+        breathing_rate: Math.floor(Math.random() * 10) + 15,
+        recommendations: ['Continue regular breathing exercises', 'Maintain good posture'],
+      };
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setSamples(prev => prev.map(s => 
+        s.id === sampleId 
+          ? { ...s, analyzed: true, analysis: mockAnalysis }
+          : s
+      ));
+      
+      Alert.alert('Analysis Complete', `Risk Level: ${mockAnalysis.risk_level}`);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      Alert.alert('Error', 'Analysis failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -199,24 +219,73 @@ const RecordBreathScreen = ({ navigation }) => {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => setSamples(prev => prev.filter(s => s.id !== sampleId))
-        }
+          onPress: () => {
+            setSamples(prev => prev.filter(s => s.id !== sampleId));
+          }
+        },
       ]
     );
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const getRiskColor = (riskLevel) => {
+    switch (riskLevel?.toLowerCase()) {
+      case 'low': return '#00ff88';
+      case 'moderate': return '#ffaa00';
+      case 'high': return '#ff6b6b';
+      default: return '#00ffff';
+    }
   };
 
-  const getRiskColor = (level) => {
-    switch (level) {
-      case 'Low': return '#00ff88';
-      case 'Moderate': return '#ffaa00';
-      case 'High': return '#ff6b6b';
-      default: return '#888';
+  const uploadFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        
+        // Validate file size (50MB limit)
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        if (file.size > maxSize) {
+          Alert.alert('File Too Large', 'Please select a file under 50MB.');
+          return;
+        }
+
+        setUploadProgress(10);
+        
+        const newSample = {
+          id: Date.now(),
+          uri: file.uri,
+          duration: 0,
+          timestamp: new Date().toISOString(),
+          analyzed: false,
+          platform: Platform.OS,
+          uploaded: true,
+          name: file.name,
+          size: file.size,
+          type: file.mimeType,
+        };
+
+        // Simulate upload progress
+        const uploadInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(uploadInterval);
+              setSamples(prevSamples => [newSample, ...prevSamples]);
+              Alert.alert('Success', 'Audio file uploaded successfully!');
+              setUploadProgress(0);
+              return 0;
+            }
+            return prev + 10;
+          });
+        }, 200);
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      Alert.alert('Error', 'Failed to upload file. Please try again.');
+      setUploadProgress(0);
     }
   };
 
@@ -230,7 +299,7 @@ const RecordBreathScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Breath Analysis</Text>
-          <Text style={styles.subtitle}>Record your breathing for AI health insights</Text>
+          <Text style={styles.subtitle}>AI-powered health insights</Text>
         </View>
 
         {/* Recording Interface */}
@@ -260,24 +329,76 @@ const RecordBreathScreen = ({ navigation }) => {
           </Animated.View>
 
           <Text style={styles.recordingText}>
-            {isRecording ? `Recording... ${formatTime(recordingTime)}` : 'Tap to start recording'}
+            {isRecording ? `Recording: ${formatTime(recordingTime)}` : 'Tap to Record'}
           </Text>
-
-          {isRecording && (
-            <Text style={styles.instructionText}>
-              Breathe naturally near the microphone
-            </Text>
-          )}
+          <Text style={styles.instructionText}>
+            {isRecording 
+              ? 'Breathe normally into your microphone' 
+              : 'Record 30 seconds of your normal breathing'
+            }
+          </Text>
         </View>
 
-        {/* Recording Tips */}
+        {/* Upload Section */}
+        <View style={styles.uploadContainer}>
+          <LinearGradient
+            colors={['rgba(0, 255, 255, 0.1)', 'rgba(0, 128, 255, 0.1)']}
+            style={styles.uploadCard}
+          >
+            <View style={styles.uploadIconContainer}>
+              <Ionicons name="cloud-upload-outline" size={32} color="#00ffff" />
+            </View>
+            
+            <Text style={styles.uploadTitle}>Upload Audio File</Text>
+            <Text style={styles.uploadSubtitle}>
+              Select an audio file from your device
+            </Text>
+            <Text style={styles.uploadInfo}>
+              Supported: MP3, WAV, M4A, OGG (Max 50MB)
+            </Text>
+
+            {uploadProgress > 0 && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[styles.progressFill, { width: `${uploadProgress}%` }]}
+                  />
+                </View>
+                <Text style={styles.progressText}>Uploading... {uploadProgress}%</Text>
+              </View>
+            )}
+
+            <TouchableOpacity 
+              style={styles.uploadButton} 
+              onPress={uploadFile}
+              disabled={uploadProgress > 0}
+            >
+              <LinearGradient
+                colors={uploadProgress > 0 ? ['#666', '#666'] : ['#00ffff', '#0080ff']}
+                style={styles.uploadButtonGradient}
+              >
+                <Ionicons 
+                  name={uploadProgress > 0 ? "hourglass-outline" : "folder-open-outline"} 
+                  size={20} 
+                  color="#fff" 
+                />
+                <Text style={styles.uploadButtonText}>
+                  {uploadProgress > 0 ? 'Uploading...' : 'Choose File'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
+        {/* Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>📝 Recording Tips</Text>
-          <View style={styles.tipsList}>
-            <Text style={styles.tipItem}>• Find a quiet environment</Text>
-            <Text style={styles.tipItem}>• Hold phone 6-12 inches from mouth</Text>
-            <Text style={styles.tipItem}>• Breathe naturally for 30+ seconds</Text>
-            <Text style={styles.tipItem}>• Avoid talking during recording</Text>
+          <Text style={styles.tipsTitle}>💡 Recording & Upload Tips</Text>
+          <View style={styles.tipsContent}>
+            <Text style={styles.tipItem}>• Find a quiet environment for recording</Text>
+            <Text style={styles.tipItem}>• Hold device 6 inches from mouth</Text>
+            <Text style={styles.tipItem}>• Breathe naturally and calmly</Text>
+            <Text style={styles.tipItem}>• Upload high-quality audio files for better analysis</Text>
+            <Text style={styles.tipItem}>• Record for at least 30 seconds</Text>
           </View>
         </View>
 
@@ -298,6 +419,9 @@ const RecordBreathScreen = ({ navigation }) => {
                     </Text>
                     <Text style={styles.sampleDuration}>
                       Duration: {formatTime(sample.duration)}
+                    </Text>
+                    <Text style={styles.samplePlatform}>
+                      {Platform.OS === 'web' ? '💻 Web' : '📱 Mobile'} • {sample.platform}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -369,33 +493,19 @@ const RecordBreathScreen = ({ navigation }) => {
                           {sample.analysis.breathing_rate} bpm
                         </Text>
                       </View>
-
-                      <View style={styles.analysisItem}>
-                        <Text style={styles.analysisLabel}>Confidence</Text>
-                        <Text style={styles.analysisValue}>
-                          {sample.analysis.confidence_level}
-                        </Text>
-                      </View>
                     </View>
 
-                    {sample.analysis.detected_issues && sample.analysis.detected_issues.length > 0 && (
-                      <View style={styles.issuesContainer}>
-                        <Text style={styles.issuesTitle}>⚠️ Detected Issues</Text>
-                        {sample.analysis.detected_issues.map((issue, index) => (
-                          <Text key={index} style={styles.issueItem}>• {issue}</Text>
+                    {sample.analysis.recommendations && (
+                      <View style={styles.recommendationContainer}>
+                        <Text style={styles.recommendationTitle}>💡 Recommendations</Text>
+                        {sample.analysis.recommendations.map((rec, index) => (
+                          <Text key={index} style={styles.recommendationText}>• {rec}</Text>
                         ))}
                       </View>
                     )}
 
-                    <View style={styles.recommendationContainer}>
-                      <Text style={styles.recommendationTitle}>💡 Recommendation</Text>
-                      <Text style={styles.recommendationText}>
-                        {sample.analysis.recommendation}
-                      </Text>
-                    </View>
-
                     <Text style={styles.disclaimer}>
-                      ⚖️ This analysis is for screening purposes only. Always consult healthcare professionals for medical diagnosis.
+                      * This analysis is for informational purposes only and should not replace professional medical advice.
                     </Text>
                   </View>
                 )}
@@ -406,10 +516,10 @@ const RecordBreathScreen = ({ navigation }) => {
 
         {samples.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="mic-outline" size={60} color="#444" />
+            <Ionicons name="mic-outline" size={64} color="#666" />
             <Text style={styles.emptyStateText}>No recordings yet</Text>
             <Text style={styles.emptyStateSubtext}>
-              Start by recording your first breathing sample above
+              Start by recording your breathing for health analysis
             </Text>
           </View>
         )}
@@ -424,23 +534,21 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     paddingHorizontal: 20,
-    marginBottom: 40,
-    alignItems: 'center',
+    paddingTop: 50,
+    marginBottom: 30,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
     color: '#888',
-    textAlign: 'center',
   },
   recordingContainer: {
     alignItems: 'center',
@@ -471,6 +579,81 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
+  uploadContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  uploadCard: {
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 255, 0.2)',
+  },
+  uploadIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 255, 255, 0.3)',
+    borderStyle: 'dashed',
+  },
+  uploadTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  uploadSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  uploadInfo: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  progressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#00ffff',
+    borderRadius: 3,
+  },
+  progressText: {
+    color: '#00ffff',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  uploadButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '80%',
+  },
+  uploadButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
   tipsContainer: {
     marginHorizontal: 20,
     marginBottom: 30,
@@ -484,10 +667,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#00ffff',
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  tipsList: {
-    gap: 8,
+  tipsContent: {
+    gap: 5,
   },
   tipItem: {
     fontSize: 14,
@@ -540,6 +723,11 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 2,
   },
+  samplePlatform: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   deleteButton: {
     padding: 8,
   },
@@ -556,29 +744,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 255, 255, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(0, 255, 255, 0.3)',
-    gap: 5,
   },
   analyzeButton: {
-    backgroundColor: 'rgba(0, 255, 255, 0.8)',
+    backgroundColor: 'rgba(0, 255, 136, 0.2)',
+    borderColor: 'rgba(0, 255, 136, 0.4)',
   },
   disabledButton: {
     opacity: 0.5,
   },
   actionButtonText: {
-    fontSize: 12,
     color: '#00ffff',
+    fontSize: 12,
     fontWeight: '600',
+    marginLeft: 5,
   },
   actionButtonTextWhite: {
-    fontSize: 12,
     color: '#fff',
+    fontSize: 12,
     fontWeight: '600',
+    marginLeft: 5,
   },
   analysisContainer: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(0, 255, 255, 0.05)',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(0, 255, 255, 0.2)',
   },
@@ -617,20 +807,6 @@ const styles = StyleSheet.create({
   riskLevel: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  issuesContainer: {
-    marginBottom: 15,
-  },
-  issuesTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffaa00',
-    marginBottom: 10,
-  },
-  issueItem: {
-    fontSize: 12,
-    color: '#ffaa00',
-    marginBottom: 5,
   },
   recommendationContainer: {
     marginBottom: 15,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -32,6 +33,9 @@ const SettingsScreen = ({ navigation }) => {
     age: '25',
     medicalConditions: '',
   });
+
+  const [watchConnected, setWatchConnected] = useState(false);
+  const [fitnessConnected, setFitnessConnected] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -125,9 +129,55 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  const SettingItem = ({ icon, title, subtitle, value, onToggle, onPress, showArrow = false }) => (
+  const handleWatchPairing = () => {
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        'Pair with Apple Watch',
+        'Would you like to connect your Apple Watch for enhanced health monitoring?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Connect',
+            onPress: () => {
+              // Simulate pairing process
+              Alert.alert('Connecting...', 'Please make sure your Apple Watch is nearby and Bluetooth is enabled.');
+              setTimeout(() => {
+                setWatchConnected(true);
+                Alert.alert('Success!', 'Apple Watch connected successfully. You can now sync breathing data and heart rate.');
+              }, 2000);
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const handleFitnessPairing = () => {
+    if (Platform.OS === 'android') {
+      Alert.alert(
+        'Pair with Fitness Band',
+        'Connect your fitness band for comprehensive health tracking. Supported devices: Mi Band, Fitbit, Samsung Galaxy Watch, Garmin, and more.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Connect',
+            onPress: () => {
+              // Simulate pairing process
+              Alert.alert('Connecting...', 'Please make sure your fitness band is in pairing mode and Bluetooth is enabled.');
+              setTimeout(() => {
+                setFitnessConnected(true);
+                Alert.alert('Success!', 'Fitness band connected successfully. Health data will now sync automatically.');
+              }, 2000);
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const SettingItem = ({ icon, title, subtitle, value, onToggle, onPress, rightComponent, showArrow = false, showBorder = true }) => (
     <TouchableOpacity
-      style={styles.settingItem}
+      style={[styles.settingItem, !showBorder && { borderBottomWidth: 0 }]}
       onPress={onPress}
       disabled={!onPress && !onToggle}
     >
@@ -149,6 +199,7 @@ const SettingsScreen = ({ navigation }) => {
             thumbColor={value ? '#fff' : '#f4f3f4'}
           />
         )}
+        {rightComponent}
         {showArrow && (
           <Ionicons name="chevron-forward" size={20} color="#888" />
         )}
@@ -197,6 +248,72 @@ const SettingsScreen = ({ navigation }) => {
               <Ionicons name="chevron-forward" size={20} color="#00ffff" />
             </LinearGradient>
           </TouchableOpacity>
+        </View>
+
+        {/* Device Pairing Section */}
+        <View style={styles.section}>
+          <SectionHeader title="Device Pairing" />
+          <View style={styles.sectionContent}>
+            
+            {/* Apple Watch - iOS Only */}
+            {Platform.OS === 'ios' && (
+              <SettingItem
+                icon={watchConnected ? "watch" : "watch-outline"}
+                title="Apple Watch"
+                subtitle={watchConnected ? "Connected - Syncing health data" : "Connect for enhanced monitoring"}
+                onPress={watchConnected ? null : handleWatchPairing}
+                rightComponent={
+                  watchConnected ? (
+                    <View style={styles.connectedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
+                      <Text style={styles.connectedText}>Connected</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.connectButton} onPress={handleWatchPairing}>
+                      <Text style={styles.connectButtonText}>Connect</Text>
+                    </TouchableOpacity>
+                  )
+                }
+                showBorder={Platform.OS === 'android'}
+              />
+            )}
+
+            {/* Fitness Band - Android Only */}
+            {Platform.OS === 'android' && (
+              <SettingItem
+                icon={fitnessConnected ? "fitness" : "fitness-outline"}
+                title="Fitness Band"
+                subtitle={fitnessConnected ? "Connected - Mi Band 7" : "Mi Band, Fitbit, Samsung, Garmin & more"}
+                onPress={fitnessConnected ? null : handleFitnessPairing}
+                rightComponent={
+                  fitnessConnected ? (
+                    <View style={styles.connectedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
+                      <Text style={styles.connectedText}>Connected</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.connectButton} onPress={handleFitnessPairing}>
+                      <Text style={styles.connectButtonText}>Connect</Text>
+                    </TouchableOpacity>
+                  )
+                }
+                showBorder={false}
+              />
+            )}
+
+            {/* Both platforms - show compatibility info */}
+            {(Platform.OS === 'ios' || Platform.OS === 'android') && (
+              <View style={styles.compatibilityInfo}>
+                <Ionicons name="information-circle-outline" size={16} color="#888" />
+                <Text style={styles.compatibilityText}>
+                  {Platform.OS === 'ios' 
+                    ? "Sync breathing patterns, heart rate, and workout data from your Apple Watch"
+                    : "Compatible with most Android fitness bands and smartwatches"
+                  }
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Notifications */}
@@ -633,6 +750,67 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  sectionContent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginHorizontal: 20,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 255, 0.1)',
+    overflow: 'hidden',
+  },
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  connectedText: {
+    color: '#00ff88',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  connectButton: {
+    backgroundColor: 'rgba(0, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 255, 0.4)',
+  },
+  connectButtonText: {
+    color: '#00ffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  compatibilityInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 15,
+    backgroundColor: 'rgba(0, 255, 255, 0.05)',
+    margin: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 255, 0.1)',
+  },
+  compatibilityText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#888',
+    marginLeft: 8,
+    lineHeight: 16,
+  },
+  platformInfo: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  platformText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

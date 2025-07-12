@@ -20,7 +20,7 @@ const Login = () => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch('http://localhost:8081/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +111,10 @@ const Login = () => {
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Don't have an account?{' '}
-              <button className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
+              <button 
+                onClick={() => navigate('/register')}
+                className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+              >
                 Sign up here
               </button>
             </p>

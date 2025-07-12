@@ -1,7 +1,7 @@
 {
   "name": "breathemate",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -9,40 +9,26 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/stack": "^6.3.29",
-    "@types/react": "~19.0.10",
-    "axios": "^1.10.0",
-    "babel-preset-expo": "~13.0.0",
-    "expo": "53.0.19",
+    "expo": "~53.0.0",
     "expo-av": "~15.1.7",
-    "expo-blur": "~14.1.5",
-    "expo-constants": "~17.1.7",
     "expo-document-picker": "~13.1.6",
-    "expo-file-system": "~18.1.11",
-    "expo-font": "~13.3.2",
     "expo-linear-gradient": "~14.1.5",
-    "expo-permissions": "^14.4.0",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-dom": "19.0.0",
     "react-native": "0.79.5",
-    "react-native-async-storage": "^0.0.1",
     "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1",
-    "react-native-svg": "15.11.2",
-    "react-native-web": "^0.20.0",
-    "typescript": "~5.8.3"
+    "react-native-screens": "~4.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "@types/react-native": "^0.72.8"
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   },
   "private": true
 }
