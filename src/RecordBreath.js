@@ -22,19 +22,47 @@ const getRiskColor = (riskLevel) => {
   }
 };
 
-// Health Affirmation Prompts for Intelligent Recording
-const HEALTH_AFFIRMATIONS = [
-  "I breathe deeply and feel my lungs expanding with healing energy.",
-  "My respiratory system is strong, healthy, and functioning perfectly.",
-  "Each breath I take fills my body with vitality and well-being.",
-  "I am grateful for my healthy lungs and clear breathing passages.",
-  "My breathing is calm, steady, and supports my overall health.",
-  "I trust my body's natural ability to heal and strengthen itself.",
-  "Every breath brings me closer to optimal respiratory health.",
-  "I am in control of my breathing and it serves my highest good.",
-  "Every breath is an opportunity to reset and renew my energy.",
-  "My lungs are resilient and adapt perfectly to my body's needs.",
-  "I breathe in love and compassion for myself and my health."
+// Enhanced Health Affirmation Categories for Intelligent Selection
+const HEALTH_AFFIRMATIONS = {
+  respiratory_strength: [
+    "I breathe deeply and feel my lungs expanding with healing energy.",
+    "My respiratory system is strong, healthy, and functioning perfectly.",
+    "Each breath I take fills my body with vitality and well-being.",
+    "My lungs are resilient and adapt perfectly to my body's needs.",
+    "Every breath brings me closer to optimal respiratory health."
+  ],
+  stress_relief: [
+    "My breathing is calm, steady, and supports my overall health.",
+    "I am in control of my breathing and it serves my highest good.",
+    "Every breath is an opportunity to reset and renew my energy.",
+    "I breathe in love and compassion for myself and my health.",
+    "Each exhale releases tension and brings me peace."
+  ],
+  healing_support: [
+    "I am grateful for my healthy lungs and clear breathing passages.",
+    "I trust my body's natural ability to heal and strengthen itself.",
+    "My breathing patterns support my body's healing process.",
+    "Every breath nourishes my cells with life-giving oxygen.",
+    "I breathe with confidence in my body's wisdom and strength."
+  ],
+  wellness_maintenance: [
+    "I maintain healthy breathing habits throughout my day.",
+    "My respiratory health improves with each mindful breath.",
+    "I honor my body by breathing consciously and purposefully.",
+    "Each breath connects me to my inner strength and vitality.",
+    "I breathe with gratitude for my healthy, functioning lungs."
+  ]
+};
+
+// Intelligent Iteration Prompts
+const ITERATION_PROMPTS = [
+  "Let's try a deeper, more focused breath this time.",
+  "Now breathe with more awareness of your chest expansion.",
+  "Focus on the rhythm and let your breathing flow naturally.",
+  "This time, emphasize the healing intention in your voice.",
+  "Breathe as if you're sending healing energy to your lungs.",
+  "Let your voice carry confidence and strength.",
+  "Imagine your breath as healing light flowing through your body."
 ];
 
 const RecordBreath = () => {
@@ -54,6 +82,16 @@ const RecordBreath = () => {
     weeklyScore: 0,
     improvementRate: 0
   });
+
+  // Enhanced iteration state
+  const [iterationMode, setIterationMode] = useState(false);
+  const [currentIteration, setCurrentIteration] = useState(1);
+  const [maxIterations] = useState(3);
+  const [iterationResults, setIterationResults] = useState([]);
+  const [adaptivePrompts, setAdaptivePrompts] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('respiratory_strength');
+  const [improvementGoals, setImprovementGoals] = useState([]);
+  const [sessionMode, setSessionMode] = useState('single'); // 'single', 'iterative', 'guided'
 
   const timerRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -202,11 +240,124 @@ const RecordBreath = () => {
     }
   };
 
+  const getAdaptivePrompt = (previousAnalysis = null) => {
+    if (!previousAnalysis) {
+      // First recording - use selected category
+      const categoryPrompts = HEALTH_AFFIRMATIONS[selectedCategory];
+      return categoryPrompts[Math.floor(Math.random() * categoryPrompts.length)];
+    }
+    
+    // Adaptive selection based on previous analysis
+    let category = selectedCategory;
+    
+    if (previousAnalysis.risk_percentage > 50) {
+      category = 'healing_support';
+    } else if (previousAnalysis.analysis_details?.stress_indicators > 40) {
+      category = 'stress_relief';
+    } else if (previousAnalysis.analysis_details?.breathing_consistency < 70) {
+      category = 'respiratory_strength';
+    } else {
+      category = 'wellness_maintenance';
+    }
+    
+    const categoryPrompts = HEALTH_AFFIRMATIONS[category];
+    return categoryPrompts[Math.floor(Math.random() * categoryPrompts.length)];
+  };
+
+  const startIterativeSession = async () => {
+    setSessionMode('iterative');
+    setIterationMode(true);
+    setCurrentIteration(1);
+    setIterationResults([]);
+    
+    const prompt = getAdaptivePrompt();
+    setCurrentPrompt(prompt);
+    setShowPrompt(true);
+    setRecordingPhase('prompt');
+    
+    // Auto-start recording after prompt display
+    setTimeout(() => {
+      actualStartRecording();
+    }, 4000);
+  };
+
+  const continueIteration = async () => {
+    if (currentIteration >= maxIterations) {
+      completeIterativeSession();
+      return;
+    }
+    
+    const lastAnalysis = iterationResults[iterationResults.length - 1];
+    setCurrentIteration(prev => prev + 1);
+    
+    const adaptivePrompt = getAdaptivePrompt(lastAnalysis);
+    const iterationPrompt = ITERATION_PROMPTS[Math.floor(Math.random() * ITERATION_PROMPTS.length)];
+    
+    setCurrentPrompt(adaptivePrompt);
+    setShowPrompt(true);
+    setRecordingPhase('prompt');
+    
+    // Show iteration guidance
+    Alert.alert(
+      `📈 Iteration ${currentIteration}/${maxIterations}`,
+      `${iterationPrompt}\n\nNew affirmation: "${adaptivePrompt}"`,
+      [
+        { text: 'Continue', onPress: () => {
+          setTimeout(() => {
+            actualStartRecording();
+          }, 2000);
+        }}
+      ]
+    );
+  };
+
+  const completeIterativeSession = () => {
+    const sessionSummary = generateSessionSummary();
+    setIterationMode(false);
+    setSessionMode('single');
+    setRecordingPhase('complete');
+    
+    Alert.alert(
+      '🎉 Session Complete!',
+      sessionSummary,
+      [
+        { text: 'View Progress', onPress: showProgressReport },
+        { text: 'New Session', onPress: () => setRecordingPhase('idle') }
+      ]
+    );
+  };
+
+  const generateSessionSummary = () => {
+    if (iterationResults.length === 0) return "Session completed!";
+    
+    const scores = iterationResults.map(r => r.healthScore);
+    const improvement = scores[scores.length - 1] - scores[0];
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    
+    return `Session Summary:\n` +
+           `• Iterations: ${iterationResults.length}\n` +
+           `• Average Score: ${avgScore.toFixed(1)}/100\n` +
+           `• Improvement: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} points\n` +
+           `• Final Risk Level: ${iterationResults[iterationResults.length - 1].risk_level}`;
+  };
+
+  const showProgressReport = () => {
+    // Navigate to detailed progress view
+    console.log('Show detailed progress report');
+  };
+
+  // Enhanced analysis with iteration tracking
   const performIntelligentAnalysis = async (sample) => {
     setAnalyzing(true);
     try {
-      // Enhanced AI analysis simulation
       const analysisResult = await simulateEnhancedAnalysis(sample);
+      
+      // Add iteration context
+      if (iterationMode) {
+        analysisResult.iteration = currentIteration;
+        analysisResult.sessionType = 'iterative';
+        setIterationResults(prev => [...prev, analysisResult]);
+      }
       
       setSamples(prev => prev.map(s => 
         s.id === sample.id 
@@ -214,23 +365,27 @@ const RecordBreath = () => {
           : s
       ));
       
-      // Update session statistics
       await updateSessionStats(analysisResult);
       
-      setRecordingPhase('complete');
-      
-      // Show comprehensive results
-      Alert.alert(
-        '🧠 AI Analysis Complete',
-        `Health Score: ${analysisResult.healthScore}/100\n` +
-        `Risk Level: ${analysisResult.risk_level}\n` +
-        `Breathing Rate: ${analysisResult.breathing_rate} bpm\n` +
-        `Recommendation: ${analysisResult.recommendation}`,
-        [
-          { text: 'View Details', onPress: () => {} },
-          { text: 'OK', onPress: () => setRecordingPhase('idle') }
-        ]
-      );
+      if (iterationMode && currentIteration < maxIterations) {
+        // Ask user if they want to continue iterating
+        setTimeout(() => {
+          Alert.alert(
+            '🔄 Continue Iterating?',
+            `Current score: ${analysisResult.healthScore}/100\n` +
+            `Would you like to try another iteration for better results?`,
+            [
+              { text: 'Complete Session', onPress: completeIterativeSession },
+              { text: 'Continue', onPress: continueIteration }
+            ]
+          );
+        }, 2000);
+      } else if (iterationMode) {
+        completeIterativeSession();
+      } else {
+        setRecordingPhase('complete');
+        showSingleSessionResults(analysisResult);
+      }
       
     } catch (error) {
       console.error('Analysis error:', error);
@@ -241,49 +396,19 @@ const RecordBreath = () => {
     }
   };
 
-  const simulateEnhancedAnalysis = async (sample) => {
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 4000));
-    
-    // Enhanced analysis considering the prompt and recording context
-    const baseScore = Math.floor(Math.random() * 30 + 70); // 70-100
-    const riskPercentage = Math.floor(Math.random() * 40 + 10); // 10-50
-    
-    const analysisResults = [
-      {
-        healthScore: baseScore,
-        risk_percentage: riskPercentage,
-        risk_level: riskPercentage < 25 ? "Low" : riskPercentage < 50 ? "Moderate" : "High",
-        confidence_level: "High",
-        breathing_rate: 14.5 + Math.random() * 6, // 14.5-20.5
-        recommendation: riskPercentage < 25 ? 
-          "Excellent breathing health! Continue your wellness routine." :
-          riskPercentage < 50 ? 
-          "Good progress. Consider daily breathing exercises." :
-          "Please consult with a healthcare professional.",
-        urgency: riskPercentage < 25 ? "Routine" : riskPercentage < 50 ? "Within 1 month" : "Within 1-2 weeks",
-        detected_issues: riskPercentage > 40 ? ["Irregular breathing pattern"] : [],
-        analysis_details: {
-          prompt_effectiveness: sample.prompt ? Math.floor(Math.random() * 20 + 80) : 0,
-          voice_clarity: Math.floor(Math.random() * 15 + 85),
-          breathing_consistency: Math.floor(Math.random() * 20 + 75),
-          stress_indicators: Math.floor(Math.random() * 30 + 10),
-          overall_wellness: baseScore
-        },
-        ai_insights: [
-          "Your breathing pattern shows good rhythm consistency",
-          "Voice analysis indicates calm emotional state",
-          "Respiratory rate is within healthy range"
-        ],
-        personalized_tips: [
-          "Continue reading health affirmations daily",
-          "Practice 4-7-8 breathing technique",
-          "Maintain current wellness routine"
-        ]
-      }
-    ];
-    
-    return analysisResults[0];
+  const showSingleSessionResults = (analysisResult) => {
+    Alert.alert(
+      '🧠 AI Analysis Complete',
+      `Health Score: ${analysisResult.healthScore}/100\n` +
+      `Risk Level: ${analysisResult.risk_level}\n` +
+      `Breathing Rate: ${analysisResult.breathing_rate} bpm\n` +
+      `Recommendation: ${analysisResult.recommendation}`,
+      [
+        { text: 'Start Iterative Session', onPress: startIterativeSession },
+        { text: 'View Details', onPress: () => {} },
+        { text: 'OK', onPress: () => setRecordingPhase('idle') }
+      ]
+    );
   };
 
   const startRecordingAnimations = () => {
@@ -381,71 +506,108 @@ const RecordBreath = () => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header with Session Stats */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={['rgba(0, 255, 255, 0.1)', 'rgba(0, 128, 255, 0.1)']}
-          style={styles.headerGradient}
-        >
-          <Text style={styles.headerTitle}>🧠 Intelligent Breath Analysis</Text>
-          <Text style={styles.headerSubtitle}>AI-powered breathing health assessment</Text>
-          
-          <View style={styles.sessionStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{sessionStats.totalSessions}</Text>
-              <Text style={styles.statLabel}>Sessions</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{sessionStats.weeklyScore}</Text>
-              <Text style={styles.statLabel}>Weekly Score</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>+{sessionStats.improvementRate}%</Text>
-              <Text style={styles.statLabel}>Improvement</Text>
-            </View>
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <LinearGradient
+        colors={['#1a1a2e', '#16213e', '#0f3460']}
+        style={styles.background}
+      >
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Enhanced Header with Session Mode Selector */}
+          <View style={styles.header}>
+            <Text style={styles.title}>🫁 Smart Breath Analysis</Text>
+            <Text style={styles.subtitle}>
+              {iterationMode ? 
+                `Iterative Session ${currentIteration}/${maxIterations}` :
+                'AI-powered respiratory health monitoring'
+              }
+            </Text>
+            
+            {/* Session Mode Selection */}
+            {!iterationMode && recordingPhase === 'idle' && (
+              <View style={styles.sessionModeContainer}>
+                <Text style={styles.sessionModeTitle}>📊 Session Type</Text>
+                <View style={styles.sessionModeButtons}>
+                  <TouchableOpacity
+                    style={[styles.sessionModeButton, sessionMode === 'single' && styles.sessionModeButtonActive]}
+                    onPress={() => setSessionMode('single')}
+                  >
+                    <Text style={[styles.sessionModeButtonText, sessionMode === 'single' && styles.sessionModeButtonTextActive]}>
+                      Single Recording
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.sessionModeButton, sessionMode === 'iterative' && styles.sessionModeButtonActive]}
+                    onPress={() => setSessionMode('iterative')}
+                  >
+                    <Text style={[styles.sessionModeButtonText, sessionMode === 'iterative' && styles.sessionModeButtonTextActive]}>
+                      Iterative Session
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            
+            {/* Affirmation Category Selection */}
+            {!iterationMode && recordingPhase === 'idle' && (
+              <View style={styles.categoryContainer}>
+                <Text style={styles.categoryTitle}>💫 Focus Area</Text>
+                <View style={styles.categoryButtons}>
+                  {Object.keys(HEALTH_AFFIRMATIONS).map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[styles.categoryButton, selectedCategory === category && styles.categoryButtonActive]}
+                      onPress={() => setSelectedCategory(category)}
+                    >
+                      <Text style={[styles.categoryButtonText, selectedCategory === category && styles.categoryButtonTextActive]}>
+                        {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
-        </LinearGradient>
-      </View>
 
-      {/* Intelligent Recording Interface */}
-      <View style={styles.recordingContainer}>
-        <LinearGradient
-          colors={
-            recordingPhase === 'recording' ? 
-            ['rgba(255, 107, 107, 0.2)', 'rgba(255, 82, 82, 0.1)'] : 
-            recordingPhase === 'analyzing' ?
-            ['rgba(255, 170, 0, 0.2)', 'rgba(255, 170, 0, 0.1)'] :
-            recordingPhase === 'complete' ?
-            ['rgba(0, 255, 136, 0.2)', 'rgba(0, 255, 136, 0.1)'] :
-            ['rgba(0, 255, 255, 0.15)', 'rgba(0, 128, 255, 0.1)']
-          }
-          style={styles.recordingCardGradient}
-        >
-          <Animated.View 
-            style={[
-              styles.recordButton,
-              { 
-                transform: [
-                  { scale: isRecording ? pulseAnim : scaleAnim }
-                ] 
-              }
-            ]}
-          >
+          {/* Session Progress Indicator */}
+          {iterationMode && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressTitle}>Session Progress</Text>
+              <View style={styles.progressBar}>
+                {[...Array(maxIterations)].map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.progressStep,
+                      index < currentIteration && styles.progressStepComplete,
+                      index === currentIteration - 1 && styles.progressStepActive
+                    ]}
+                  >
+                    <Text style={styles.progressStepText}>{index + 1}</Text>
+                  </View>
+                ))}
+              </View>
+              {iterationResults.length > 0 && (
+                <Text style={styles.progressScore}>
+                  Latest Score: {iterationResults[iterationResults.length - 1].healthScore}/100
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Enhanced Recording Interface */}
+          <Animated.View style={[styles.recordingContainer, { transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
-              onPress={
-                recordingPhase === 'idle' ? startIntelligentRecording :
-                recordingPhase === 'recording' ? stopRecording :
-                () => setRecordingPhase('idle')
-              }
-              style={styles.recordTouchable}
-              disabled={recordingPhase === 'prompt' || recordingPhase === 'analyzing'}
+              style={styles.recordButton}
+              onPress={sessionMode === 'iterative' && !iterationMode ? startIterativeSession : startIntelligentRecording}
+              disabled={recordingPhase === 'recording' || recordingPhase === 'analyzing'}
             >
               <LinearGradient
                 colors={
                   recordingPhase === 'recording' ? ['#ff6b6b', '#ff5252'] :
                   recordingPhase === 'analyzing' ? ['#ffaa00', '#ff8f00'] :
                   recordingPhase === 'complete' ? ['#00ff88', '#00e676'] :
+                  iterationMode ? ['#9c27b0', '#673ab7'] :
                   ['#00ffff', '#0080ff']
                 }
                 style={styles.recordGradient}
@@ -456,6 +618,8 @@ const RecordBreath = () => {
                     recordingPhase === 'analyzing' ? "hourglass" :
                     recordingPhase === 'complete' ? "checkmark" :
                     recordingPhase === 'prompt' ? "book" :
+                    iterationMode ? "repeat" :
+                    sessionMode === 'iterative' ? "layers" :
                     "mic"
                   } 
                   size={40} 
@@ -467,7 +631,8 @@ const RecordBreath = () => {
 
           <View style={styles.recordingInfo}>
             <Text style={styles.recordingStatus}>
-              {recordingPhase === 'idle' ? 'Tap to Start Intelligent Recording' :
+              {recordingPhase === 'idle' ? 
+                (sessionMode === 'iterative' ? 'Start Iterative Session' : 'Tap to Start Intelligent Recording') :
                recordingPhase === 'prompt' ? 'Read the affirmation aloud...' :
                recordingPhase === 'recording' ? `Recording: ${formatTime(recordingTime)}` :
                recordingPhase === 'analyzing' ? 'AI is analyzing your breath patterns...' :
@@ -495,188 +660,213 @@ const RecordBreath = () => {
               </Animated.View>
             )}
           </View>
-        </LinearGradient>
-      </View>
 
-      {/* Health Affirmation Prompt */}
-      {showPrompt && (
-        <View style={styles.promptContainer}>
-          <LinearGradient
-            colors={['rgba(0, 255, 255, 0.15)', 'rgba(0, 128, 255, 0.15)']}
-            style={styles.promptCard}
-          >
-            <Text style={styles.promptTitle}>💫 Health Affirmation</Text>
-            <Text style={styles.promptText}>{currentPrompt}</Text>
-            <Text style={styles.promptInstruction}>
-              Read this affirmation aloud clearly for best analysis results
-            </Text>
-          </LinearGradient>
-        </View>
-      )}
-
-      {/* Enhanced Upload Section */}
-      <View style={styles.uploadContainer}>
-        <LinearGradient
-          colors={['rgba(0, 255, 255, 0.1)', 'rgba(0, 128, 255, 0.1)']}
-          style={styles.uploadCard}
-        >
-          <View style={styles.uploadContent}>
-            <Ionicons name="cloud-upload-outline" size={32} color="#00ffff" />
-            <Text style={styles.uploadTitle}>Upload Audio File</Text>
-            <Text style={styles.uploadSubtitle}>
-              Upload an existing breathing recording for analysis
-            </Text>
-
-            {uploadProgress > 0 && (
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />
+          {/* Iteration Results Summary */}
+          {iterationMode && iterationResults.length > 0 && (
+            <View style={styles.iterationSummary}>
+              <Text style={styles.iterationSummaryTitle}>📈 Iteration Results</Text>
+              {iterationResults.map((result, index) => (
+                <View key={index} style={styles.iterationItem}>
+                  <View style={styles.iterationHeader}>
+                    <Text style={styles.iterationNumber}>#{index + 1}</Text>
+                    <Text style={styles.iterationScore}>{result.healthScore}/100</Text>
+                    <Text style={[styles.iterationRisk, { color: getRiskColor(result.risk_level) }]}>
+                      {result.risk_level}
+                    </Text>
+                  </View>
+                  <Text style={styles.iterationImprovement}>
+                    {index > 0 && (
+                      result.healthScore - iterationResults[index - 1].healthScore > 0 
+                        ? `+${(result.healthScore - iterationResults[index - 1].healthScore).toFixed(1)} improvement`
+                        : `${(result.healthScore - iterationResults[index - 1].healthScore).toFixed(1)} change`
+                    )}
+                  </Text>
                 </View>
-                <Text style={styles.progressText}>{uploadProgress}%</Text>
-              </View>
-            )}
+              ))}
+            </View>
+          )}
 
-            <TouchableOpacity 
-              style={styles.uploadButton} 
-              onPress={uploadFile}
-              disabled={uploadProgress > 0}
-            >
+          {/* Health Affirmation Prompt */}
+          {showPrompt && (
+            <View style={styles.promptContainer}>
               <LinearGradient
-                colors={uploadProgress > 0 ? ['#666', '#666'] : ['#00ffff', '#0080ff']}
-                style={styles.uploadButtonGradient}
+                colors={['rgba(0, 255, 255, 0.15)', 'rgba(0, 128, 255, 0.15)']}
+                style={styles.promptCard}
               >
-                <Ionicons 
-                  name={uploadProgress > 0 ? "hourglass-outline" : "folder-open-outline"} 
-                  size={20} 
-                  color="#fff" 
-                />
-                <Text style={styles.uploadButtonText}>
-                  {uploadProgress > 0 ? 'Uploading...' : 'Choose File'}
+                <Text style={styles.promptTitle}>💫 Health Affirmation</Text>
+                <Text style={styles.promptText}>{currentPrompt}</Text>
+                <Text style={styles.promptInstruction}>
+                  Read this affirmation aloud clearly for best analysis results
                 </Text>
               </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </View>
+            </View>
+          )}
 
-      {/* Enhanced Samples List with Analysis Results */}
-      <View style={styles.samplesContainer}>
-        <View style={styles.samplesHeader}>
-          <Text style={styles.samplesTitle}>Recent Sessions</Text>
-          <Text style={styles.samplesCount}>{samples.length} recordings</Text>
-        </View>
-
-        {samples.length === 0 ? (
-          <View style={styles.emptyState}>
+          {/* Enhanced Upload Section */}
+          <View style={styles.uploadContainer}>
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
-              style={styles.emptyStateGradient}
+              colors={['rgba(0, 255, 255, 0.1)', 'rgba(0, 128, 255, 0.1)']}
+              style={styles.uploadCard}
             >
-              <Ionicons name="mic-outline" size={64} color="#666" />
-              <Text style={styles.emptyStateText}>No recordings yet</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Start your first intelligent recording session
-              </Text>
+              <View style={styles.uploadContent}>
+                <Ionicons name="cloud-upload-outline" size={32} color="#00ffff" />
+                <Text style={styles.uploadTitle}>Upload Audio File</Text>
+                <Text style={styles.uploadSubtitle}>
+                  Upload an existing breathing recording for analysis
+                </Text>
+
+                {uploadProgress > 0 && (
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>{uploadProgress}%</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity 
+                  style={styles.uploadButton} 
+                  onPress={uploadFile}
+                  disabled={uploadProgress > 0}
+                >
+                  <LinearGradient
+                    colors={uploadProgress > 0 ? ['#666', '#666'] : ['#00ffff', '#0080ff']}
+                    style={styles.uploadButtonGradient}
+                  >
+                    <Ionicons 
+                      name={uploadProgress > 0 ? "hourglass-outline" : "folder-open-outline"} 
+                      size={20} 
+                      color="#fff" 
+                    />
+                    <Text style={styles.uploadButtonText}>
+                      {uploadProgress > 0 ? 'Uploading...' : 'Choose File'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </LinearGradient>
           </View>
-        ) : (
-          <View style={styles.samplesList}>
-            {samples.map((sample) => (
-              <View key={sample.id} style={styles.sampleCard}>
+
+          {/* Enhanced Samples List with Analysis Results */}
+          <View style={styles.samplesContainer}>
+            <View style={styles.samplesHeader}>
+              <Text style={styles.samplesTitle}>Recent Sessions</Text>
+              <Text style={styles.samplesCount}>{samples.length} recordings</Text>
+            </View>
+
+            {samples.length === 0 ? (
+              <View style={styles.emptyState}>
                 <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-                  style={styles.sampleGradient}
+                  colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                  style={styles.emptyStateGradient}
                 >
-                  {/* Sample Header */}
-                  <View style={styles.sampleHeader}>
-                    <View style={styles.sampleInfo}>
-                      <Text style={styles.sampleTime}>
-                        {new Date(sample.timestamp).toLocaleTimeString()}
-                      </Text>
-                      <Text style={styles.sampleDuration}>
-                        {formatTime(sample.duration)} • {sample.sessionType || 'Standard Recording'}
-                      </Text>
-                      {sample.prompt && (
-                        <Text style={styles.samplePrompt} numberOfLines={2}>
-                          💭 "{sample.prompt}"
-                        </Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => deleteSample(sample.id)}
-                      style={styles.deleteButton}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Enhanced Analysis Results */}
-                  {sample.analyzed && sample.analysis && (
-                    <View style={styles.enhancedAnalysisContainer}>
-                      <Text style={styles.analysisTitle}>🧠 AI Health Analysis</Text>
-                      
-                      {/* Health Score Display */}
-                      <View style={styles.healthScoreContainer}>
-                        <View style={styles.scoreCircle}>
-                          <Text style={styles.scoreNumber}>{sample.analysis.healthScore}</Text>
-                          <Text style={styles.scoreLabel}>Health Score</Text>
-                        </View>
-                        <View style={styles.riskIndicator}>
-                          <Text style={[styles.riskLevel, { color: getRiskColor(sample.analysis.risk_level) }]}>
-                            {sample.analysis.risk_level} Risk
-                          </Text>
-                          <Text style={styles.riskPercentage}>{sample.analysis.risk_percentage}%</Text>
-                        </View>
-                      </View>
-
-                      {/* Key Metrics */}
-                      <View style={styles.metricsGrid}>
-                        <View style={styles.metricItem}>
-                          <Text style={styles.metricValue}>{sample.analysis.breathing_rate}</Text>
-                          <Text style={styles.metricLabel}>BPM</Text>
-                        </View>
-                        <View style={styles.metricItem}>
-                          <Text style={styles.metricValue}>{sample.analysis.lung_capacity}%</Text>
-                          <Text style={styles.metricLabel}>Lung Capacity</Text>
-                        </View>
-                        <View style={styles.metricItem}>
-                          <Text style={styles.metricValue}>{sample.analysis.stress_indicators}%</Text>
-                          <Text style={styles.metricLabel}>Stress Level</Text>
-                        </View>
-                      </View>
-
-                      {/* AI Insights */}
-                      <View style={styles.insightsContainer}>
-                        <Text style={styles.insightsTitle}>💡 AI Insights</Text>
-                        {sample.analysis.ai_insights?.map((insight, index) => (
-                          <Text key={index} style={styles.insightText}>• {insight}</Text>
-                        ))}
-                      </View>
-
-                      {/* Personalized Tips */}
-                      <View style={styles.tipsContainer}>
-                        <Text style={styles.tipsTitle}>🎯 Personalized Tips</Text>
-                        {sample.analysis.personalized_tips?.map((tip, index) => (
-                          <Text key={index} style={styles.tipText}>• {tip}</Text>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Analysis in progress indicator */}
-                  {analyzing && !sample.analyzed && (
-                    <View style={styles.analyzingContainer}>
-                      <ActivityIndicator size="large" color="#00ffff" />
-                      <Text style={styles.analyzingText}>AI is analyzing your breath patterns...</Text>
-                    </View>
-                  )}
+                  <Ionicons name="mic-outline" size={64} color="#666" />
+                  <Text style={styles.emptyStateText}>No recordings yet</Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Start your first intelligent recording session
+                  </Text>
                 </LinearGradient>
               </View>
-            ))}
+            ) : (
+              <View style={styles.samplesList}>
+                {samples.map((sample) => (
+                  <View key={sample.id} style={styles.sampleCard}>
+                    <LinearGradient
+                      colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+                      style={styles.sampleGradient}
+                    >
+                      {/* Sample Header */}
+                      <View style={styles.sampleHeader}>
+                        <View style={styles.sampleInfo}>
+                          <Text style={styles.sampleTime}>
+                            {new Date(sample.timestamp).toLocaleTimeString()}
+                          </Text>
+                          <Text style={styles.sampleDuration}>
+                            {formatTime(sample.duration)} • {sample.sessionType || 'Standard Recording'}
+                          </Text>
+                          {sample.prompt && (
+                            <Text style={styles.samplePrompt} numberOfLines={2}>
+                              💭 "{sample.prompt}"
+                            </Text>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => deleteSample(sample.id)}
+                          style={styles.deleteButton}
+                        >
+                          <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Enhanced Analysis Results */}
+                      {sample.analyzed && sample.analysis && (
+                        <View style={styles.enhancedAnalysisContainer}>
+                          <Text style={styles.analysisTitle}>🧠 AI Health Analysis</Text>
+                          
+                          {/* Health Score Display */}
+                          <View style={styles.healthScoreContainer}>
+                            <View style={styles.scoreCircle}>
+                              <Text style={styles.scoreNumber}>{sample.analysis.healthScore}</Text>
+                              <Text style={styles.scoreLabel}>Health Score</Text>
+                            </View>
+                            <View style={styles.riskIndicator}>
+                              <Text style={[styles.riskLevel, { color: getRiskColor(sample.analysis.risk_level) }]}>
+                                {sample.analysis.risk_level} Risk
+                              </Text>
+                              <Text style={styles.riskPercentage}>{sample.analysis.risk_percentage}%</Text>
+                            </View>
+                          </View>
+
+                          {/* Key Metrics */}
+                          <View style={styles.metricsGrid}>
+                            <View style={styles.metricItem}>
+                              <Text style={styles.metricValue}>{sample.analysis.breathing_rate}</Text>
+                              <Text style={styles.metricLabel}>BPM</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                              <Text style={styles.metricValue}>{sample.analysis.lung_capacity}%</Text>
+                              <Text style={styles.metricLabel}>Lung Capacity</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                              <Text style={styles.metricValue}>{sample.analysis.stress_indicators}%</Text>
+                              <Text style={styles.metricLabel}>Stress Level</Text>
+                            </View>
+                          </View>
+
+                          {/* AI Insights */}
+                          <View style={styles.insightsContainer}>
+                            <Text style={styles.insightsTitle}>💡 AI Insights</Text>
+                            {sample.analysis.ai_insights?.map((insight, index) => (
+                              <Text key={index} style={styles.insightText}>• {insight}</Text>
+                            ))}
+                          </View>
+
+                          {/* Personalized Tips */}
+                          <View style={styles.tipsContainer}>
+                            <Text style={styles.tipsTitle}>🎯 Personalized Tips</Text>
+                            {sample.analysis.personalized_tips?.map((tip, index) => (
+                              <Text key={index} style={styles.tipText}>• {tip}</Text>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Analysis in progress indicator */}
+                      {analyzing && !sample.analyzed && (
+                        <View style={styles.analyzingContainer}>
+                          <ActivityIndicator size="large" color="#00ffff" />
+                          <Text style={styles.analyzingText}>AI is analyzing your breath patterns...</Text>
+                        </View>
+                      )}
+                    </LinearGradient>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
-        )}
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </LinearGradient>
+    </View>
   );
 };
 
@@ -694,35 +884,194 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     margin: 16,
   },
-  headerTitle: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     marginBottom: 8,
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 16,
     color: '#aaa',
     textAlign: 'center',
     marginBottom: 20,
   },
-  sessionStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  sessionModeContainer: {
+    marginTop: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 15,
+    padding: 15,
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  sessionModeTitle: {
     color: '#00ffff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  statLabel: {
+  sessionModeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  sessionModeButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  sessionModeButtonActive: {
+    backgroundColor: 'rgba(0, 255, 255, 0.2)',
+    borderColor: '#00ffff',
+  },
+  sessionModeButtonText: {
+    color: '#ccc',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sessionModeButtonTextActive: {
+    color: '#00ffff',
+    fontWeight: '600',
+  },
+  categoryContainer: {
+    marginTop: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 15,
+    padding: 15,
+  },
+  categoryTitle: {
+    color: '#00ffff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  categoryButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  categoryButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    margin: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  categoryButtonActive: {
+    backgroundColor: 'rgba(156, 39, 176, 0.3)',
+    borderColor: '#9c27b0',
+  },
+  categoryButtonText: {
+    color: '#ccc',
     fontSize: 12,
-    color: '#888',
-    marginTop: 4,
+    fontWeight: '500',
+  },
+  categoryButtonTextActive: {
+    color: '#9c27b0',
+    fontWeight: '600',
+  },
+  progressContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 15,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  progressTitle: {
+    color: '#00ffff',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  progressStep: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  progressStepComplete: {
+    backgroundColor: 'rgba(0, 255, 136, 0.3)',
+    borderColor: '#00ff88',
+  },
+  progressStepActive: {
+    backgroundColor: 'rgba(0, 255, 255, 0.3)',
+    borderColor: '#00ffff',
+  },
+  progressStepText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressScore: {
+    color: '#00ff88',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  iterationSummary: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 15,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  iterationSummaryTitle: {
+    color: '#00ffff',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  iterationItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+  },
+  iterationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  iterationNumber: {
+    color: '#00ffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  iterationScore: {
+    color: '#00ff88',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  iterationRisk: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  iterationImprovement: {
+    color: '#ccc',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   recordingContainer: {
     margin: 16,
