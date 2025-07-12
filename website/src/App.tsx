@@ -195,57 +195,233 @@ const Dashboard: React.FC<{ userName: string; onLogout: () => void }> = ({ userN
   );
 };
 
-// Record Component matching Expo app
-const Record = () => (
-  <div className="page-container">
-    <div className="page-header">
-      <h1 className="page-title">🎤 Record Breath</h1>
-      <p className="page-subtitle">Start your breathing analysis</p>
-    </div>
+// Record Component with Media Upload functionality
+const Record = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'completed' | 'uploaded'>('idle');
 
-    <div className="record-main">
-      <div className="record-circle">
-        <div className="record-inner-circle">
-          <div className="record-icon">🎤</div>
-        </div>
+  // Recording timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    setRecordingTime(0);
+    setRecordingStatus('recording');
+    setUploadedFile(null);
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+    setRecordingStatus('completed');
+    // Simulate recording completion
+    setTimeout(() => {
+      alert('Recording completed! Analysis will be processed.');
+    }, 500);
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (file && (file.type.startsWith('audio/') || file.type.startsWith('video/'))) {
+      setUploadedFile(file);
+      setRecordingStatus('uploaded');
+      setIsRecording(false);
+      setRecordingTime(0);
+    } else {
+      alert('Please upload an audio or video file.');
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (recordingStatus === 'completed' || recordingStatus === 'uploaded') {
+      alert('Analyzing breathing pattern... Results will be available in your journal.');
+      setRecordingStatus('idle');
+      setUploadedFile(null);
+      setRecordingTime(0);
+    }
+  };
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">🎤 Record Breath</h1>
+        <p className="page-subtitle">Start your breathing analysis</p>
       </div>
-      
-      <div className="record-controls">
-        <button className="record-button-main">
-          <div className="record-gradient">
-            Start Recording
+
+      <div className="record-main">
+        <div className={`record-circle ${isRecording ? 'recording' : ''} ${recordingStatus === 'completed' ? 'completed' : ''} ${recordingStatus === 'uploaded' ? 'uploaded' : ''}`}>
+          <div className="record-inner-circle">
+            <div className="record-icon">
+              {isRecording ? '⏸️' : recordingStatus === 'completed' ? '✅' : recordingStatus === 'uploaded' ? '📁' : '🎤'}
+            </div>
+            {isRecording && (
+              <div className="recording-timer">{formatTime(recordingTime)}</div>
+            )}
           </div>
-        </button>
+        </div>
         
-        <p className="record-instructions">
-          Tap to start recording your breathing pattern. Keep the microphone close to your mouth and breathe normally.
-        </p>
-      </div>
-    </div>
+        <div className="record-controls">
+          {recordingStatus === 'idle' && (
+            <button className="record-button-main" onClick={handleStartRecording}>
+              <div className="record-gradient">
+                Start Recording
+              </div>
+            </button>
+          )}
+          
+          {isRecording && (
+            <button className="record-button-main stop-button" onClick={handleStopRecording}>
+              <div className="stop-gradient">
+                Stop Recording
+              </div>
+            </button>
+          )}
 
-    <div className="record-tips">
-      <h3 className="tips-title">Recording Tips</h3>
-      <div className="tips-grid">
-        <div className="tip-item">
-          <span className="tip-emoji">🤫</span>
-          <p>Find a quiet environment</p>
+          {(recordingStatus === 'completed' || recordingStatus === 'uploaded') && (
+            <button className="record-button-main analyze-button" onClick={handleAnalyze}>
+              <div className="analyze-gradient">
+                Analyze Recording
+              </div>
+            </button>
+          )}
+          
+          <p className="record-instructions">
+            {isRecording ? 'Recording in progress... Breathe naturally and keep the device steady.' :
+             recordingStatus === 'completed' ? 'Recording completed! Click analyze to process your breathing pattern.' :
+             recordingStatus === 'uploaded' ? `File "${uploadedFile?.name}" uploaded successfully!` :
+             'Tap to start recording your breathing pattern or upload an existing audio file.'}
+          </p>
         </div>
-        <div className="tip-item">
-          <span className="tip-emoji">📱</span>
-          <p>Hold device steady</p>
+      </div>
+
+      {/* File Upload Section */}
+      <div className="upload-section">
+        <h3 className="upload-title">Or Upload Audio File</h3>
+        
+        <div 
+          className={`upload-zone ${dragActive ? 'drag-active' : ''} ${uploadedFile ? 'file-uploaded' : ''}`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <input 
+            type="file" 
+            id="file-upload" 
+            className="file-input"
+            accept="audio/*,video/*"
+            onChange={handleFileInput}
+          />
+          <label htmlFor="file-upload" className="upload-label">
+            {uploadedFile ? (
+              <>
+                <span className="upload-icon">📁</span>
+                <span className="upload-text">{uploadedFile.name}</span>
+                <span className="upload-subtext">File uploaded successfully</span>
+              </>
+            ) : (
+              <>
+                <span className="upload-icon">📤</span>
+                <span className="upload-text">
+                  {dragActive ? 'Drop your file here' : 'Click to upload or drag & drop'}
+                </span>
+                <span className="upload-subtext">Supports audio and video files</span>
+              </>
+            )}
+          </label>
         </div>
-        <div className="tip-item">
-          <span className="tip-emoji">😌</span>
-          <p>Breathe naturally</p>
-        </div>
-        <div className="tip-item">
-          <span className="tip-emoji">⏱️</span>
-          <p>Record for 30 seconds</p>
+
+        {uploadedFile && (
+          <div className="file-info">
+            <div className="file-details">
+              <span className="file-name">📎 {uploadedFile.name}</span>
+              <span className="file-size">{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+            </div>
+            <button 
+              className="remove-file-btn"
+              onClick={() => {
+                setUploadedFile(null);
+                setRecordingStatus('idle');
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="record-tips">
+        <h3 className="tips-title">Recording Tips</h3>
+        <div className="tips-grid">
+          <div className="tip-item">
+            <span className="tip-emoji">🤫</span>
+            <p>Find a quiet environment</p>
+          </div>
+          <div className="tip-item">
+            <span className="tip-emoji">📱</span>
+            <p>Hold device steady</p>
+          </div>
+          <div className="tip-item">
+            <span className="tip-emoji">😌</span>
+            <p>Breathe naturally</p>
+          </div>
+          <div className="tip-item">
+            <span className="tip-emoji">⏱️</span>
+            <p>Record for 30 seconds</p>
+          </div>
+          <div className="tip-item">
+            <span className="tip-emoji">📤</span>
+            <p>Upload existing files</p>
+          </div>
+          <div className="tip-item">
+            <span className="tip-emoji">🎵</span>
+            <p>Audio/video formats supported</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Journal Component matching Expo app
 const Journal = () => (
