@@ -14,7 +14,8 @@ import {
   Bell, 
   Sun, 
   Moon,
-  Waves
+  Waves,
+  Brain
 } from 'lucide-react';
 import Login from './Login';
 import Register from './Register';
@@ -23,6 +24,7 @@ import Journal from './Journal';
 import Report from './Report';
 import RecordBreath from './RecordBreath';
 import SettingsPage from './Settings';
+import AdvancedAnalytics from './AdvancedAnalytics';
 
 // Theme Context
 const ThemeContext = React.createContext();
@@ -34,6 +36,7 @@ const Sidebar = ({ isOpen, setIsOpen, currentPath, darkMode, toggleDarkMode }) =
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/record-breath', icon: Mic, label: 'Record Breath' },
+    { path: '/analytics', icon: Brain, label: 'Advanced Analytics' },
     { path: '/journal', icon: BookOpen, label: 'Journal' },
     { path: '/report', icon: BarChart3, label: 'Reports' },
     { path: '/settings', icon: Settings, label: 'Settings' },
@@ -405,6 +408,11 @@ function App() {
               <Route path="/settings" element={
                 <AuthGuard darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <SettingsPage />
+                </AuthGuard>
+              } />
+              <Route path="/analytics" element={
+                <AuthGuard darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                  <AdvancedAnalytics />
                 </AuthGuard>
               } />
             </Routes>
