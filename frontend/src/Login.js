@@ -20,14 +20,33 @@ const Login = () => {
     setError('');
     
     try {
-      // Simulate API call
-      setTimeout(() => {
-        localStorage.setItem('token', 'demo-token');
+      const response = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.message === 'Login successful') {
+        // Store the token in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userEmail', email);
+        
+        // Navigate to dashboard
         navigate('/dashboard');
-      }, 1000);
-      
+      } else {
+        setError(data.message || 'Login failed! Please check your credentials.');
+      }
     } catch (error) {
-      setError('Login failed! Please check your credentials.');
+      console.error('Login error:', error);
+      setError('Network error. Please check if the backend server is running.');
+    } finally {
       setLoading(false);
     }
   };
