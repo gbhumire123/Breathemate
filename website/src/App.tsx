@@ -1,6 +1,41 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 
+// TypeScript interfaces
+interface AnalysisResults {
+  aiHealthScore: number;
+  respiratoryHealth: number;
+  sleepApneaRisk: number;
+  stressLevels: number;
+  lungCapacity: number;
+  accuracy: number;
+  confidence: string;
+  breathingRate: number;
+  voiceClarity: number;
+  promptEffectiveness: number;
+  analysis_id: string;
+}
+
+interface AIAssistantChatProps {
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+  analysisResults: AnalysisResults | null;
+}
+
+interface HealthStats {
+  dailyGoal: number;
+  aiHealthScore: number;
+  dayStreak: number;
+  weeklySessions: number;
+  totalSessions: number;
+  respiratoryHealth: number;
+  sleepApneaRisk: number;
+  stressLevels: number;
+  lungCapacity: number;
+  lastUpdated: string;
+}
+
 // Health Affirmation Prompts for Intelligent Recording
 const HEALTH_AFFIRMATIONS = [
   "I breathe deeply and feel my lungs expanding with healing energy.",
@@ -17,7 +52,7 @@ const HEALTH_AFFIRMATIONS = [
 ];
 
 // Enhanced AI Assistant Chat Component
-const AIAssistantChat = ({ message, isVisible, onClose, analysisResults }) => {
+const AIAssistantChat: React.FC<AIAssistantChatProps> = ({ message, isVisible, onClose, analysisResults }) => {
   if (!isVisible) return null;
 
   return (
@@ -126,8 +161,8 @@ const AIAssistantChat = ({ message, isVisible, onClose, analysisResults }) => {
 };
 
 // Enhanced Health Stats Dashboard
-const HealthStatsDashboard = () => {
-  const [healthStats, setHealthStats] = useState(() => {
+const HealthStatsDashboard: React.FC = () => {
+  const [healthStats, setHealthStats] = useState<HealthStats>(() => {
     const stored = localStorage.getItem('breathemate_health_stats');
     return stored ? JSON.parse(stored) : {
       dailyGoal: 0,
@@ -243,22 +278,22 @@ const HealthStatsDashboard = () => {
 };
 
 // Enhanced Record Component with Health Affirmations
-const Record = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [currentPrompt, setCurrentPrompt] = useState('');
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [recordingStatus, setRecordingStatus] = useState('idle'); // idle, recording, analyzing, completed
-  const [waveformIntensity, setWaveformIntensity] = useState(1);
-  const [analysisResults, setAnalysisResults] = useState(null);
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [aiMessage, setAiMessage] = useState('');
+const Record: React.FC = () => {
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
+  const [showPrompt, setShowPrompt] = useState<boolean>(false);
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'analyzing' | 'completed'>('idle');
+  const [waveformIntensity, setWaveformIntensity] = useState<number>(1);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [showAIChat, setShowAIChat] = useState<boolean>(false);
+  const [aiMessage, setAiMessage] = useState<string>('');
   
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    let interval;
+    let interval: NodeJS.Timeout;
     if (isRecording) {
       interval = setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -268,7 +303,7 @@ const Record = () => {
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -336,7 +371,7 @@ const Record = () => {
     setRecordingStatus('analyzing');
   };
 
-  const analyzeAudio = async (audioBlob) => {
+  const analyzeAudio = async (audioBlob: Blob) => {
     try {
       // Create FormData to send audio file
       const formData = new FormData();
@@ -392,7 +427,7 @@ const Record = () => {
     };
   };
 
-  const updateHealthStats = (results) => {
+  const updateHealthStats = (results: AnalysisResults) => {
     const currentStats = getStoredHealthStats();
     const now = new Date();
     const lastUpdate = new Date(currentStats.lastUpdated);
@@ -415,7 +450,7 @@ const Record = () => {
     saveHealthStats(updatedStats);
   };
 
-  const generateAIMessage = (results) => {
+  const generateAIMessage = (results: AnalysisResults) => {
     const messages = [
       `Great session! Your AI Health Score is ${results.aiHealthScore}/100. `,
       `Your breathing patterns show ${results.respiratoryHealth}% respiratory health efficiency. `,
@@ -448,7 +483,7 @@ const Record = () => {
     };
   };
 
-  const saveHealthStats = (stats) => {
+  const saveHealthStats = (stats: HealthStats) => {
     localStorage.setItem('breathemate_health_stats', JSON.stringify(stats));
     // Force re-render of dashboard
     window.dispatchEvent(new Event('healthStatsUpdated'));
