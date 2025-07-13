@@ -13,6 +13,14 @@ const BREATHING_PROMPTS: readonly string[] = [
 ] as const;
 
 // TypeScript interfaces
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  joinDate: string;
+}
+
 interface AnalysisResults {
   healthScore: number;
   riskLevel: string;
@@ -537,18 +545,305 @@ const AnalyticsModal: React.FC<{
   );
 };
 
+// Login Page Component
+const LoginPage: React.FC<{
+  onLogin: (user: User) => void;
+}> = ({ onLogin }) => {
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+
+  // Demo user credentials
+  const demoUsers = [
+    {
+      id: 'demo-1',
+      name: 'Dr. Sarah Chen',
+      email: 'demo@breathemate.com',
+      password: 'demo123',
+      avatar: '👩‍⚕️',
+      joinDate: '2024-01-15'
+    },
+    {
+      id: 'demo-2', 
+      name: 'Alex Johnson',
+      email: 'patient@breathemate.com',
+      password: 'patient123',
+      avatar: '🧑‍💼',
+      joinDate: '2024-03-20'
+    }
+  ];
+
+  const handleLogin = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Check demo credentials
+    const user = demoUsers.find(u => 
+      u.email === loginForm.email && u.password === loginForm.password
+    );
+
+    if (user) {
+      onLogin({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        joinDate: user.joinDate
+      });
+    } else {
+      alert('Invalid credentials. Try demo@breathemate.com / demo123');
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleQuickDemo = (userIndex: number): void => {
+    const user = demoUsers[userIndex];
+    onLogin({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      joinDate: user.joinDate
+    });
+  };
+
+  return (
+    <div className="login-container">
+      <div className="login-background">
+        <div className="login-card">
+          <div className="login-header">
+            <div className="login-logo">
+              <span className="login-icon">🫁</span>
+              <h1 className="login-title">BreatheMate</h1>
+              <p className="login-subtitle">AI-Powered Respiratory Health</p>
+            </div>
+          </div>
+
+          <div className="login-content">
+            {!showRegister ? (
+              <>
+                <h2 className="login-form-title">Welcome Back</h2>
+                <p className="login-form-subtitle">Sign in to continue your health journey</p>
+
+                <form onSubmit={handleLogin} className="login-form">
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      placeholder="Enter your email"
+                      value={loginForm.email}
+                      onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Password</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Enter your password"
+                      value={loginForm.password}
+                      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="login-button"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="loading-spinner-container">
+                        <div className="loading-spinner"></div>
+                        <span>Signing In...</span>
+                      </div>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </button>
+                </form>
+
+                <div className="login-divider">
+                  <span className="divider-text">or</span>
+                </div>
+
+                <div className="demo-section">
+                  <h3 className="demo-title">🚀 Quick Demo Access</h3>
+                  <p className="demo-subtitle">Try BreatheMate instantly with demo accounts</p>
+                  
+                  <div className="demo-buttons">
+                    <button
+                      className="demo-button healthcare"
+                      onClick={() => handleQuickDemo(0)}
+                      type="button"
+                    >
+                      <div className="demo-button-content">
+                        <span className="demo-avatar">👩‍⚕️</span>
+                        <div className="demo-info">
+                          <span className="demo-name">Dr. Sarah Chen</span>
+                          <span className="demo-role">Healthcare Provider</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      className="demo-button patient"
+                      onClick={() => handleQuickDemo(1)}
+                      type="button"
+                    >
+                      <div className="demo-button-content">
+                        <span className="demo-avatar">🧑‍💼</span>
+                        <div className="demo-info">
+                          <span className="demo-name">Alex Johnson</span>
+                          <span className="demo-role">Patient View</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="login-footer">
+                  <p className="footer-text">
+                    Don't have an account?{' '}
+                    <button
+                      className="link-button"
+                      onClick={() => setShowRegister(true)}
+                      type="button"
+                    >
+                      Sign Up
+                    </button>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="register-form">
+                <h2 className="login-form-title">Create Account</h2>
+                <p className="login-form-subtitle">Join BreatheMate for better respiratory health</p>
+                
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Create a password"
+                  />
+                </div>
+
+                <button className="login-button" type="button">
+                  Create Account
+                </button>
+
+                <div className="login-footer">
+                  <p className="footer-text">
+                    Already have an account?{' '}
+                    <button
+                      className="link-button"
+                      onClick={() => setShowRegister(false)}
+                      type="button"
+                    >
+                      Sign In
+                    </button>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="login-features">
+            <div className="feature-item">
+              <span className="feature-icon">🤖</span>
+              <span className="feature-text">AI Health Analysis</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">📊</span>
+              <span className="feature-text">Progress Tracking</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">🔒</span>
+              <span className="feature-text">Secure & Private</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
-function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [showRecordingModal, setShowRecordingModal] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [currentPrompt, setCurrentPrompt] = useState('');
-  const [showAnalytics, setShowAnalytics] = useState(false);
+function App(): React.ReactElement {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState<string>('dashboard');
+  const [showRecordingModal, setShowRecordingModal] = useState<boolean>(false);
+  const [showPrompt, setShowPrompt] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check for saved authentication on app load
+  useEffect(() => {
+    const savedUser = localStorage.getItem('breathemate_user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('breathemate_user');
+      }
+    }
+  }, []);
+
+  const handleLogin = (user: User): void => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    localStorage.setItem('breathemate_user', JSON.stringify(user));
+  };
+
+  const handleLogout = (): void => {
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('breathemate_user');
+    setCurrentPage('dashboard');
+  };
+
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   // Mock data - same as mobile app
   const [healthStats] = useState<HealthStats>({
@@ -763,11 +1058,34 @@ function App() {
             BreatheMate
             <span className="app-subtitle">AI Health Tracker</span>
           </h1>
+          
+          {/* User Profile Section */}
+          {currentUser && (
+            <div className="user-profile">
+              <div className="user-avatar">
+                {currentUser.avatar || '👤'}
+              </div>
+              <div className="user-info">
+                <span className="user-name">{currentUser.name}</span>
+                <span className="user-role">
+                  {currentUser.email.includes('demo') ? 'Healthcare Provider' : 'Patient'}
+                </span>
+              </div>
+              <button 
+                className="logout-button"
+                onClick={handleLogout}
+                type="button"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
         <nav className="app-nav">
           <button 
             className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
             onClick={() => setCurrentPage('dashboard')}
+            type="button"
           >
             🏠 Dashboard
           </button>
