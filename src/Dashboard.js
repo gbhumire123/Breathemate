@@ -16,6 +16,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
+// Health affirmation prompts for AI analysis
+const BREATHING_PROMPTS = [
+  "Please breathe naturally and say: I am breathing deeply and my lungs are healthy and strong",
+  "Take a deep breath and speak clearly: My respiratory system is functioning perfectly and I feel calm",
+  "Breathe slowly and say: Each breath brings healing energy to my body and mind",
+  "Inhale deeply and speak: I release all tension and breathe with complete ease",
+  "Please state while breathing: My breathing is steady, my airways are clear, and I am at peace",
+  "Breathe naturally and say: I trust my body's wisdom and my lungs work in perfect harmony",
+  "Take three deep breaths and speak: I am grateful for my healthy breathing and strong respiratory system"
+];
+
 const DashboardScreen = ({ navigation }) => {
   const [userName, setUserName] = useState('User');
   const [healthStats, setHealthStats] = useState({
@@ -37,6 +48,14 @@ const DashboardScreen = ({ navigation }) => {
     totalIterations: 0,
     successRate: 0
   });
+
+  // Recording states
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [recordingType, setRecordingType] = useState(null); // 'record' or 'upload'
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
 
   useEffect(() => {
     loadUserData();
@@ -144,10 +163,96 @@ const DashboardScreen = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       await AsyncStorage.clear();
-      navigation.navigate('Auth');
+      navigation.navigate('Login');
     } catch (error) {
       console.log('Error logging out:', error);
     }
+  };
+
+  const startRecording = (type) => {
+    setRecordingType(type);
+    if (type === 'record') {
+      // Show a random prompt for better AI analysis
+      const randomPrompt = BREATHING_PROMPTS[Math.floor(Math.random() * BREATHING_PROMPTS.length)];
+      setCurrentPrompt(randomPrompt);
+      setShowPrompt(true);
+    } else {
+      // For upload, directly open file picker
+      handleFileUpload();
+    }
+  };
+
+  const startActualRecording = () => {
+    setShowPrompt(false);
+    setIsRecording(true);
+    setRecordingTime(0);
+    
+    // Start recording timer
+    const timer = setInterval(() => {
+      setRecordingTime(prev => prev + 1);
+    }, 1000);
+
+    // Auto-stop after 30 seconds
+    setTimeout(() => {
+      clearInterval(timer);
+      stopRecording();
+    }, 30000);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    setShowRecordingModal(false);
+    
+    // Simulate AI analysis
+    setTimeout(() => {
+      const mockAnalysis = {
+        healthScore: Math.floor(Math.random() * 40) + 60, // 60-100
+        riskLevel: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
+        breathingRate: (Math.random() * 10 + 15).toFixed(1), // 15-25 bpm
+        issues: Math.random() > 0.7 ? ['Irregular breathing pattern'] : [],
+        recommendation: 'Continue regular monitoring and maintain healthy breathing habits.'
+      };
+      
+      Alert.alert(
+        '🧠 AI Analysis Complete',
+        `Health Score: ${mockAnalysis.healthScore}/100\n` +
+        `Risk Level: ${mockAnalysis.riskLevel}\n` +
+        `Breathing Rate: ${mockAnalysis.breathingRate} bpm\n` +
+        `Recommendation: ${mockAnalysis.recommendation}`,
+        [{ text: 'OK' }]
+      );
+    }, 2000);
+  };
+
+  const handleFileUpload = () => {
+    setShowRecordingModal(false);
+    // Simulate file upload
+    Alert.alert(
+      'Upload Audio File',
+      'Select an audio file containing your breathing sounds for AI analysis.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Choose File', 
+          onPress: () => {
+            // Simulate file selection and analysis
+            setTimeout(() => {
+              Alert.alert(
+                '✅ Upload Successful',
+                'Your audio file has been uploaded and analyzed. Check your reports for detailed results.',
+                [{ text: 'OK' }]
+              );
+            }, 1500);
+          }
+        }
+      ]
+    );
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getGreeting = () => {
@@ -204,6 +309,149 @@ const DashboardScreen = ({ navigation }) => {
       minute: '2-digit'
     });
   };
+
+  // Recording Modal Component
+  const RecordingModal = () => (
+    <Modal
+      visible={showRecordingModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowRecordingModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.recordingModalContainer}>
+          <LinearGradient
+            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            style={styles.recordingModalGradient}
+          >
+            <View style={styles.recordingModalHeader}>
+              <Text style={styles.recordingModalTitle}>🎙️ AI Breathing Analysis</Text>
+              <TouchableOpacity 
+                onPress={() => setShowRecordingModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.recordingOptions}>
+              <TouchableOpacity
+                style={styles.recordingOptionCard}
+                onPress={() => startRecording('record')}
+              >
+                <LinearGradient
+                  colors={['#00ffff', '#0080ff']}
+                  style={styles.recordingOptionGradient}
+                >
+                  <Ionicons name="mic" size={40} color="#fff" />
+                  <Text style={styles.recordingOptionTitle}>Record Live</Text>
+                  <Text style={styles.recordingOptionSubtitle}>
+                    Use AI-guided prompts for accurate health analysis
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.recordingOptionCard}
+                onPress={() => startRecording('upload')}
+              >
+                <LinearGradient
+                  colors={['#00ff88', '#00cc66']}
+                  style={styles.recordingOptionGradient}
+                >
+                  <Ionicons name="cloud-upload" size={40} color="#fff" />
+                  <Text style={styles.recordingOptionTitle}>Upload Audio</Text>
+                  <Text style={styles.recordingOptionSubtitle}>
+                    Select existing audio file for AI analysis
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Prompt Modal Component
+  const PromptModal = () => (
+    <Modal
+      visible={showPrompt}
+      animationType="fade"
+      transparent={true}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.promptModalContainer}>
+          <LinearGradient
+            colors={['rgba(0, 255, 255, 0.15)', 'rgba(0, 128, 255, 0.15)']}
+            style={styles.promptModalGradient}
+          >
+            <Text style={styles.promptTitle}>💫 AI Analysis Prompt</Text>
+            <Text style={styles.promptText}>{currentPrompt}</Text>
+            <Text style={styles.promptInstruction}>
+              Please read this sentence aloud clearly while breathing naturally. 
+              This helps our AI provide more accurate health analysis by detecting voice patterns, breathing rhythm, and speech clarity.
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.startRecordingButton}
+              onPress={startActualRecording}
+            >
+              <LinearGradient
+                colors={['#ff6b6b', '#ff5252']}
+                style={styles.startRecordingGradient}
+              >
+                <Ionicons name="mic" size={24} color="#fff" />
+                <Text style={styles.startRecordingText}>Start Recording</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Recording in Progress Modal
+  const RecordingProgressModal = () => (
+    <Modal
+      visible={isRecording}
+      animationType="fade"
+      transparent={true}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.recordingProgressContainer}>
+          <LinearGradient
+            colors={['rgba(255, 107, 107, 0.2)', 'rgba(255, 82, 82, 0.2)']}
+            style={styles.recordingProgressGradient}
+          >
+            <View style={styles.recordingIndicator}>
+              <View style={styles.recordingPulse} />
+              <Ionicons name="mic" size={60} color="#ff6b6b" />
+            </View>
+            
+            <Text style={styles.recordingStatusText}>🔴 Recording in Progress</Text>
+            <Text style={styles.recordingTimeText}>{formatTime(recordingTime)}</Text>
+            <Text style={styles.recordingInstructionText}>
+              Continue speaking the prompt clearly...
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.stopRecordingButton}
+              onPress={stopRecording}
+            >
+              <LinearGradient
+                colors={['#666', '#555']}
+                style={styles.stopRecordingGradient}
+              >
+                <Ionicons name="stop" size={24} color="#fff" />
+                <Text style={styles.stopRecordingText}>Stop Recording</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </View>
+    </Modal>
+  );
 
   const AnalyticsModal = () => (
     <Modal
@@ -420,7 +668,7 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.actionGrid}>
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => navigation.navigate('Record')}
+              onPress={() => setShowRecordingModal(true)}
             >
               <LinearGradient
                 colors={['#00ffff', '#0080ff']}
@@ -428,7 +676,7 @@ const DashboardScreen = ({ navigation }) => {
               >
                 <Ionicons name="mic" size={32} color="#fff" />
                 <Text style={styles.actionTitle}>Record Breath</Text>
-                <Text style={styles.actionSubtitle}>Start a new analysis</Text>
+                <Text style={styles.actionSubtitle}>Start AI-guided analysis</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -567,6 +815,9 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </ScrollView>
       
+      <RecordingModal />
+      <PromptModal />
+      <RecordingProgressModal />
       <AnalyticsModal />
     </LinearGradient>
   );
@@ -1024,6 +1275,197 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     textAlign: 'center',
+  },
+  
+  // New Modal styles for recording functionality
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingModalContainer: {
+    width: width * 0.9,
+    maxHeight: '80%',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  recordingModalGradient: {
+    padding: 20,
+  },
+  recordingModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  recordingModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  recordingOptions: {
+    gap: 20,
+  },
+  recordingOptionCard: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  recordingOptionGradient: {
+    padding: 25,
+    alignItems: 'center',
+  },
+  recordingOptionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  recordingOptionSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+  promptModalContainer: {
+    width: width * 0.9,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  promptModalGradient: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  promptTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#00ffff',
+    marginBottom: 20,
+  },
+  promptText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+    fontStyle: 'italic',
+  },
+  promptInstruction: {
+    fontSize: 14,
+    color: '#aaa',
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 20,
+  },
+  startRecordingButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  startRecordingGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+  },
+  startRecordingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 10,
+  },
+  recordingProgressContainer: {
+    width: width * 0.8,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  recordingProgressGradient: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  recordingIndicator: {
+    position: 'relative',
+    marginBottom: 30,
+  },
+  recordingPulse: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 107, 107, 0.3)',
+    top: -30,
+    left: -30,
+  },
+  recordingStatusText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ff6b6b',
+    marginBottom: 10,
+  },
+  recordingTimeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+  },
+  recordingInstructionText: {
+    fontSize: 14,
+    color: '#aaa',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  stopRecordingButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  stopRecordingGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+  },
+  stopRecordingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  analyticsButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  analyticsGradient: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tipContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  tipGradient: {
+    padding: 20,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(156, 39, 176, 0.2)',
+  },
+  tipTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#9c27b0',
+    marginBottom: 10,
+    marginLeft: 30,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#ccc',
+    lineHeight: 20,
+    marginLeft: 30,
   },
 });
 
