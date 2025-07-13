@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 
 // Health affirmation prompts for AI analysis - same as mobile app
-const BREATHING_PROMPTS = [
+const BREATHING_PROMPTS: readonly string[] = [
   "Please breathe naturally and say: I am breathing deeply and my lungs are healthy and strong",
   "Take a deep breath and speak clearly: My respiratory system is functioning perfectly and I feel calm",
   "Breathe slowly and say: Each breath brings healing energy to my body and mind",
@@ -10,7 +10,7 @@ const BREATHING_PROMPTS = [
   "Please state while breathing: My breathing is steady, my airways are clear, and I am at peace",
   "Breathe naturally and say: I trust my body's wisdom and my lungs work in perfect harmony",
   "Take three deep breaths and speak: I am grateful for my healthy breathing and strong respiratory system"
-];
+] as const;
 
 // TypeScript interfaces
 interface AnalysisResults {
@@ -618,7 +618,7 @@ function App() {
     };
   }, [isRecording]);
 
-  const handleRecordClick = (type: 'record' | 'upload') => {
+  const handleRecordClick = (type: 'record' | 'upload'): void => {
     setShowRecordingModal(false);
     
     if (type === 'record') {
@@ -632,7 +632,7 @@ function App() {
     }
   };
 
-  const startActualRecording = async () => {
+  const startActualRecording = async (): Promise<void> => {
     setShowPrompt(false);
     setIsRecording(true);
     setRecordingTime(0);
@@ -654,9 +654,10 @@ function App() {
       
       mediaRecorderRef.current = mediaRecorder;
 
-      mediaRecorder.ondataavailable = (event) => {
+      mediaRecorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
           // Handle recorded data
+          console.log('Recording data available:', event.data);
         }
       };
 
@@ -680,7 +681,7 @@ function App() {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (): void => {
     setIsRecording(false);
     
     if (mediaRecorderRef.current) {
@@ -706,13 +707,14 @@ function App() {
     }, 2000);
   };
 
-  const handleFileUpload = () => {
+  const handleFileUpload = (): void => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'audio/*';
     
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
       if (file) {
         // Simulate file analysis
         setTimeout(() => {
@@ -727,7 +729,7 @@ function App() {
     input.click();
   };
 
-  const renderPage = () => {
+  const renderPage = (): React.ReactElement => {
     switch(currentPage) {
       case 'dashboard':
         return (
