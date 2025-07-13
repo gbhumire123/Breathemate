@@ -580,7 +580,39 @@ const LoginPage: React.FC<{
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call delay
+    try {
+      // Try backend API first
+      const response = await fetch('http://localhost:8081/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginForm.email,
+          password: loginForm.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.message === 'Login successful') {
+        // Backend authentication successful
+        localStorage.setItem('token', data.token);
+        onLogin({
+          id: 'backend-user',
+          name: loginForm.email.split('@')[0],
+          email: loginForm.email,
+          avatar: '👤',
+          joinDate: new Date().toISOString().split('T')[0]
+        });
+        setIsLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.log('Backend not available, falling back to demo credentials');
+    }
+
+    // Fallback to demo credentials if backend is not available
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Check demo credentials
@@ -597,7 +629,7 @@ const LoginPage: React.FC<{
         joinDate: user.joinDate
       });
     } else {
-      alert('Invalid credentials. Try demo@breathemate.com / demo123');
+      alert('Invalid credentials. Try demo@breathemate.com / demo123 or start the backend server');
     }
 
     setIsLoading(false);
