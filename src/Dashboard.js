@@ -505,22 +505,19 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.analyticsSection}>
             <Text style={styles.analyticsSectionTitle}>📈 Weekly Progress Trends</Text>
             {weeklyTrends.map((week, index) => (
-              <View key={index} style={styles.trendCard}>
-                <View style={styles.trendHeader}>
-                  <Text style={styles.trendWeek}>{week.week}</Text>
-                  <Text style={styles.trendScore}>{week.avgScore}/100</Text>
+              <View key={index} style={styles.weeklyTrendCard}>
+                <View style={styles.weeklyTrendHeader}>
+                  <Text style={styles.weeklyTrendTitle}>{week.week}</Text>
+                  <Text style={[styles.weeklyTrendImprovement, { color: week.improvement > 10 ? '#00ff88' : '#ffaa00' }]}>
+                    +{week.improvement}% improvement
+                  </Text>
                 </View>
-                <View style={styles.trendDetails}>
-                  <Text style={styles.trendDetail}>📋 {week.sessions} sessions</Text>
-                  <Text style={styles.trendDetail}>📈 +{week.improvement}% improvement</Text>
+                <View style={styles.weeklyTrendStats}>
+                  <Text style={styles.weeklyTrendStat}>Avg Score: {week.avgScore}</Text>
+                  <Text style={styles.weeklyTrendStat}>Sessions: {week.sessions}</Text>
                 </View>
-                <View style={styles.trendProgress}>
-                  <View 
-                    style={[
-                      styles.trendProgressBar, 
-                      { width: `${week.avgScore}%`, backgroundColor: week.avgScore >= 80 ? '#00ff88' : '#ffaa00' }
-                    ]} 
-                  />
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${week.avgScore}%` }]} />
                 </View>
               </View>
             ))}
@@ -529,57 +526,107 @@ const DashboardScreen = ({ navigation }) => {
           {/* Improvement Statistics */}
           <View style={styles.analyticsSection}>
             <Text style={styles.analyticsSectionTitle}>🎯 Improvement Statistics</Text>
-            <View style={styles.improvementGrid}>
-              <View style={styles.improvementCard}>
-                <Ionicons name="trending-up" size={24} color="#00ff88" />
-                <Text style={styles.improvementValue}>{improvementStats.avgImprovement}%</Text>
-                <Text style={styles.improvementLabel}>Avg Improvement</Text>
+            <View style={styles.improvementStatsCard}>
+              <View style={styles.improvementStatRow}>
+                <View style={styles.improvementStat}>
+                  <Text style={styles.improvementStatValue}>{improvementStats.avgImprovement}%</Text>
+                  <Text style={styles.improvementStatLabel}>Avg Improvement</Text>
+                </View>
+                <View style={styles.improvementStat}>
+                  <Text style={styles.improvementStatValue}>{improvementStats.totalIterations}</Text>
+                  <Text style={styles.improvementStatLabel}>Total Iterations</Text>
+                </View>
               </View>
-              <View style={styles.improvementCard}>
-                <Ionicons name="star" size={24} color="#ffaa00" />
-                <Text style={styles.improvementValue}>{improvementStats.totalIterations}</Text>
-                <Text style={styles.improvementLabel}>Total Iterations</Text>
+              <View style={styles.improvementStatRow}>
+                <View style={styles.improvementStat}>
+                  <Text style={styles.improvementStatValue}>{improvementStats.successRate}%</Text>
+                  <Text style={styles.improvementStatLabel}>Success Rate</Text>
+                </View>
+                <View style={styles.improvementStat}>
+                  <Text style={styles.improvementStatValue}>
+                    {improvementStats.bestSession?.improvement || 0}%
+                  </Text>
+                  <Text style={styles.improvementStatLabel}>Best Session</Text>
+                </View>
               </View>
-              <View style={styles.improvementCard}>
-                <Ionicons name="checkmark-circle" size={24} color="#00ffff" />
-                <Text style={styles.improvementValue}>{improvementStats.successRate}%</Text>
-                <Text style={styles.improvementLabel}>Success Rate</Text>
-              </View>
+              {improvementStats.bestSession && (
+                <View style={styles.bestSessionInfo}>
+                  <Text style={styles.bestSessionText}>
+                    🏆 Best session: {formatDate(improvementStats.bestSession.date)} 
+                    (Final Score: {improvementStats.bestSession.finalScore})
+                  </Text>
+                </View>
+              )}
             </View>
-            
-            {improvementStats.bestSession && (
-              <View style={styles.bestSessionCard}>
-                <Text style={styles.bestSessionTitle}>🏆 Best Session</Text>
-                <Text style={styles.bestSessionDate}>{formatDate(improvementStats.bestSession.date)}</Text>
-                <Text style={styles.bestSessionScore}>
-                  Final Score: {improvementStats.bestSession.finalScore}/100
-                </Text>
-                <Text style={styles.bestSessionImprovement}>
-                  Improvement: +{improvementStats.bestSession.improvement} points
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Session Type Distribution */}
           <View style={styles.analyticsSection}>
-            <Text style={styles.analyticsSectionTitle}>📊 Session Distribution</Text>
-            <View style={styles.distributionContainer}>
-              <View style={styles.distributionCard}>
-                <View style={[styles.distributionIcon, { backgroundColor: 'rgba(0, 255, 255, 0.2)' }]}>
-                  <Ionicons name="radio-button-on" size={24} color="#00ffff" />
+            <Text style={styles.analyticsSectionTitle}>📋 Session Types</Text>
+            <View style={styles.sessionTypeCard}>
+              <View style={styles.sessionTypeRow}>
+                <View style={styles.sessionType}>
+                  <Text style={styles.sessionTypeValue}>{sessionTypes.iterative}</Text>
+                  <Text style={styles.sessionTypeLabel}>Iterative Sessions</Text>
+                  <Text style={styles.sessionTypeDescription}>Multi-iteration improvement</Text>
                 </View>
-                <Text style={styles.distributionCount}>{sessionTypes.single}</Text>
-                <Text style={styles.distributionLabel}>Single Sessions</Text>
+                <View style={styles.sessionType}>
+                  <Text style={styles.sessionTypeValue}>{sessionTypes.single}</Text>
+                  <Text style={styles.sessionTypeLabel}>Single Sessions</Text>
+                  <Text style={styles.sessionTypeDescription}>One-time recordings</Text>
+                </View>
               </View>
-              <View style={styles.distributionCard}>
-                <View style={[styles.distributionIcon, { backgroundColor: 'rgba(156, 39, 176, 0.2)' }]}>
-                  <Ionicons name="repeat" size={24} color="#9c27b0" />
-                </View>
-                <Text style={styles.distributionCount}>{sessionTypes.iterative}</Text>
-                <Text style={styles.distributionLabel}>Iterative Sessions</Text>
+              <View style={styles.sessionTypeInsight}>
+                <Text style={styles.sessionTypeInsightText}>
+                  💡 {sessionTypes.iterative > sessionTypes.single ? 
+                    'Great! You\'re focusing on iterative improvement sessions.' :
+                    'Try more iterative sessions for better health insights.'}
+                </Text>
               </View>
             </View>
+          </View>
+
+          {/* Recent Session History */}
+          <View style={styles.analyticsSection}>
+            <Text style={styles.analyticsSectionTitle}>🕒 Recent Session History</Text>
+            {iterationHistory.slice(0, 3).map((session) => (
+              <View key={session.id} style={styles.sessionHistoryCard}>
+                <View style={styles.sessionHistoryHeader}>
+                  <Text style={styles.sessionHistoryDate}>{formatDate(session.date)}</Text>
+                  <View style={[styles.sessionTypeBadge, { 
+                    backgroundColor: session.sessionType === 'iterative' ? '#0080ff20' : '#00ff8820' 
+                  }]}>
+                    <Text style={[styles.sessionTypeBadgeText, {
+                      color: session.sessionType === 'iterative' ? '#0080ff' : '#00ff88'
+                    }]}>
+                      {session.sessionType === 'iterative' ? 'Iterative' : 'Single'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.sessionIterations}>
+                  {session.iterations.map((iteration, idx) => (
+                    <View key={idx} style={styles.iterationItem}>
+                      <Text style={styles.iterationNumber}>#{iteration.iteration}</Text>
+                      <Text style={styles.iterationScore}>{iteration.score}</Text>
+                      <View style={[styles.riskIndicator, { backgroundColor: getRiskColor(iteration.risk) + '30' }]}>
+                        <Text style={[styles.riskText, { color: getRiskColor(iteration.risk) }]}>
+                          {iteration.risk}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                
+                {session.improvement > 0 && (
+                  <View style={styles.sessionImprovement}>
+                    <Text style={styles.sessionImprovementText}>
+                      📈 +{session.improvement}% improvement • {session.duration}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         </ScrollView>
       </LinearGradient>
@@ -1108,27 +1155,233 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   analyticsSection: {
-    marginBottom: 30,
+    marginVertical: 15,
   },
   analyticsSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 15,
+    color: '#ffffff',
+    marginBottom: 10,
   },
-  monthlyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  
+  // Weekly Trends Styles
+  weeklyTrendCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  weeklyTrendHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  weeklyTrendTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  weeklyTrendImprovement: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  weeklyTrendStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  weeklyTrendStat: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#00ff88',
+    borderRadius: 3,
+  },
+  
+  // Improvement Statistics Styles
+  improvementStatsCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 15,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0, 255, 255, 0.1)',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  improvementStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  improvementStat: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  improvementStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#00ff88',
+    marginBottom: 5,
+  },
+  improvementStatLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+  },
+  bestSessionInfo: {
+    backgroundColor: 'rgba(255,215,0,0.1)',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  bestSessionText: {
+    fontSize: 14,
+    color: '#FFD700',
+    textAlign: 'center',
+  },
+  
+  // Session Type Styles
+  sessionTypeCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  sessionTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  sessionType: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  sessionTypeValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#0080ff',
+    marginBottom: 5,
+  },
+  sessionTypeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  sessionTypeDescription: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+  },
+  sessionTypeInsight: {
+    backgroundColor: 'rgba(0,128,255,0.1)',
+    borderRadius: 10,
+    padding: 12,
+  },
+  sessionTypeInsightText: {
+    fontSize: 14,
+    color: '#0080ff',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  // Session History Styles
+  sessionHistoryCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  sessionHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sessionHistoryDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  sessionTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sessionTypeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sessionIterations: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  iterationItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  iterationNumber: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 3,
+  },
+  iterationScore: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 5,
+  },
+  riskIndicator: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  riskText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  sessionImprovement: {
+    backgroundColor: 'rgba(0,255,136,0.1)',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 5,
+  },
+  sessionImprovementText: {
+    fontSize: 12,
+    color: '#00ff88',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  
+  // Monthly Overview Styles
+  monthlyCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   monthlyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#00ffff',
+    color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   monthlyStats: {
     flexDirection: 'row',
@@ -1136,302 +1389,23 @@ const styles = StyleSheet.create({
   },
   monthlyStat: {
     alignItems: 'center',
+    flex: 1,
   },
   monthlyStatValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#00ffff',
+    marginBottom: 5,
   },
   monthlyStatLabel: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 5,
-  },
-  trendCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  trendHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  trendWeek: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  trendScore: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00ffff',
-  },
-  trendDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  trendDetail: {
-    fontSize: 12,
-    color: '#888',
-  },
-  trendProgress: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  trendProgressBar: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  improvementGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  improvementCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  improvementValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginVertical: 8,
-  },
-  improvementLabel: {
-    fontSize: 12,
-    color: '#888',
-    textAlign: 'center',
-  },
-  bestSessionCard: {
-    backgroundColor: 'rgba(255, 170, 0, 0.1)',
-    borderRadius: 12,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 170, 0, 0.2)',
-  },
-  bestSessionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffaa00',
-    marginBottom: 8,
-  },
-  bestSessionDate: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 4,
-  },
-  bestSessionScore: {
-    fontSize: 14,
-    color: '#00ffff',
-    marginBottom: 2,
-  },
-  bestSessionImprovement: {
-    fontSize: 14,
-    color: '#00ff88',
-  },
-  distributionContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  distributionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  distributionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  distributionCount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  distributionLabel: {
-    fontSize: 12,
-    color: '#888',
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   
-  // New Modal styles for recording functionality
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordingModalContainer: {
-    width: width * 0.9,
-    maxHeight: '80%',
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  recordingModalGradient: {
-    padding: 20,
-  },
-  recordingModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  recordingModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  recordingOptions: {
-    gap: 20,
-  },
-  recordingOptionCard: {
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  recordingOptionGradient: {
-    padding: 25,
-    alignItems: 'center',
-  },
-  recordingOptionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 15,
-    marginBottom: 8,
-  },
-  recordingOptionSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  promptModalContainer: {
-    width: width * 0.9,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  promptModalGradient: {
-    padding: 30,
-    alignItems: 'center',
-  },
-  promptTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00ffff',
-    marginBottom: 20,
-  },
-  promptText: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 20,
-    fontStyle: 'italic',
-  },
-  promptInstruction: {
-    fontSize: 14,
-    color: '#aaa',
-    textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 20,
-  },
-  startRecordingButton: {
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  startRecordingGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-  },
-  startRecordingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginLeft: 10,
-  },
-  recordingProgressContainer: {
-    width: width * 0.8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  recordingProgressGradient: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  recordingIndicator: {
-    position: 'relative',
-    marginBottom: 30,
-  },
-  recordingPulse: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 107, 107, 0.3)',
-    top: -30,
-    left: -30,
-  },
-  recordingStatusText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ff6b6b',
-    marginBottom: 10,
-  },
-  recordingTimeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  recordingInstructionText: {
-    fontSize: 14,
-    color: '#aaa',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  stopRecordingButton: {
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  stopRecordingGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-  },
-  stopRecordingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginLeft: 10,
-  },
+  // Header Actions
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
   },
   analyticsButton: {
@@ -1444,28 +1418,199 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tipContainer: {
-    paddingHorizontal: 20,
+  
+  // Recording Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingModalContainer: {
+    width: width * 0.9,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  recordingModalGradient: {
+    padding: 30,
+  },
+  recordingModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 30,
+  },
+  recordingModalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  recordingOptions: {
+    gap: 20,
+  },
+  recordingOptionCard: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  recordingOptionGradient: {
+    padding: 25,
+    alignItems: 'center',
+    minHeight: 120,
+  },
+  recordingOptionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  recordingOptionSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Prompt Modal Styles
+  promptModalContainer: {
+    width: width * 0.9,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15,15,15,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,255,0.3)',
+    overflow: 'hidden',
+  },
+  promptModalGradient: {
+    padding: 30,
+  },
+  promptTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#00ffff',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  promptText: {
+    fontSize: 16,
+    color: '#ffffff',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+    fontStyle: 'italic',
+    backgroundColor: 'rgba(0,255,255,0.1)',
+    padding: 15,
+    borderRadius: 10,
+  },
+  promptInstruction: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 25,
+  },
+  startRecordingButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  startRecordingGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    gap: 10,
+  },
+  startRecordingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  
+  // Recording Progress Modal Styles
+  recordingProgressContainer: {
+    width: width * 0.8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15,15,15,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,107,0.3)',
+    overflow: 'hidden',
+  },
+  recordingProgressGradient: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  recordingIndicator: {
+    position: 'relative',
+    marginBottom: 30,
+  },
+  recordingPulse: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,107,107,0.3)',
+    top: -20,
+    left: -20,
+  },
+  recordingStatusText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff6b6b',
+    marginBottom: 10,
+  },
+  recordingTimeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  recordingInstructionText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  stopRecordingButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  stopRecordingGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    gap: 10,
+  },
+  stopRecordingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  
+  // Health Tip Styles
+  tipContainer: {
+    marginHorizontal: 20,
+    marginBottom: 30,
+    borderRadius: 15,
+    overflow: 'hidden',
   },
   tipGradient: {
     padding: 20,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(156, 39, 176, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   tipTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#9c27b0',
-    marginBottom: 10,
-    marginLeft: 30,
+    marginBottom: 8,
+    marginLeft: 10,
   },
   tipText: {
     fontSize: 14,
-    color: '#ccc',
+    color: 'rgba(255,255,255,0.9)',
     lineHeight: 20,
-    marginLeft: 30,
+    flex: 1,
+    marginLeft: 10,
   },
 });
 

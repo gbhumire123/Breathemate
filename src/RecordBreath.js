@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, Animated, ActivityIndicator, Modal } from 'react-native';
 import DocumentPicker from 'react-native-document-picker';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 
 // Helper function to determine risk color
 const getRiskColor = (riskLevel) => {
@@ -93,6 +94,22 @@ const RecordBreath = () => {
   const [improvementGoals, setImprovementGoals] = useState([]);
   const [sessionMode, setSessionMode] = useState('single'); // 'single', 'iterative', 'guided'
 
+  // Enhanced iteration analytics with detailed tracking
+  const [iterationAnalytics, setIterationAnalytics] = useState({
+    sessionHistory: [],
+    weeklyProgress: [],
+    improvementTrends: {},
+    categoryPerformance: {},
+    streakData: { current: 0, best: 0 },
+    achievementsMilestones: []
+  });
+
+  // Add heart rate monitoring state
+  const [heartRateData, setHeartRateData] = useState([]);
+  const [averageHeartRate, setAverageHeartRate] = useState(0);
+  const [heartRateVariability, setHeartRateVariability] = useState(0);
+  const [biometricTracking, setBiometricTracking] = useState(false);
+
   const timerRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -100,6 +117,7 @@ const RecordBreath = () => {
 
   useEffect(() => {
     loadSessionStats();
+    loadIterationAnalytics();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -127,6 +145,86 @@ const RecordBreath = () => {
       await AsyncStorage.setItem('sessionStats', JSON.stringify(newStats));
     } catch (error) {
       console.log('Error updating session stats:', error);
+    }
+  };
+
+  const loadIterationAnalytics = async () => {
+    try {
+      const analytics = await AsyncStorage.getItem('iterationAnalytics');
+      if (analytics) {
+        setIterationAnalytics(JSON.parse(analytics));
+      }
+    } catch (error) {
+      console.log('Error loading iteration analytics:', error);
+    }
+  };
+
+  const updateIterationAnalytics = async (sessionData) => {
+    try {
+      const today = new Date().toDateString();
+      const newAnalytics = { ...iterationAnalytics };
+      
+      // Update session history
+      newAnalytics.sessionHistory.push({
+        date: today,
+        sessionType: iterationMode ? 'iterative' : 'single',
+        iterationCount: iterationResults.length,
+        scores: iterationResults.map(r => r.healthScore),
+        category: selectedCategory,
+        improvement: iterationResults.length > 1 ? 
+          iterationResults[iterationResults.length - 1].healthScore - iterationResults[0].healthScore : 0,
+        timestamp: Date.now()
+      });
+      
+      // Update weekly progress
+      const weekData = newAnalytics.weeklyProgress.find(w => w.week === getWeekNumber(new Date())) || 
+        { week: getWeekNumber(new Date()), sessions: 0, avgScore: 0, totalImprovement: 0 };
+      
+      weekData.sessions += 1;
+      weekData.avgScore = (weekData.avgScore * (weekData.sessions - 1) + 
+        (iterationResults.reduce((sum, r) => sum + r.healthScore, 0) / iterationResults.length)) / weekData.sessions;
+      weekData.totalImprovement += sessionData.improvement || 0;
+      
+      if (!newAnalytics.weeklyProgress.find(w => w.week === weekData.week)) {
+        newAnalytics.weeklyProgress.push(weekData);
+      }
+      
+      // Update category performance
+      if (!newAnalytics.categoryPerformance[selectedCategory]) {
+        newAnalytics.categoryPerformance[selectedCategory] = {
+          sessions: 0,
+          avgScore: 0,
+          bestScore: 0,
+          totalImprovement: 0
+        };
+      }
+      
+      const categoryData = newAnalytics.categoryPerformance[selectedCategory];
+      categoryData.sessions += 1;
+      const sessionAvg = iterationResults.reduce((sum, r) => sum + r.healthScore, 0) / iterationResults.length;
+      categoryData.avgScore = (categoryData.avgScore * (categoryData.sessions - 1) + sessionAvg) / categoryData.sessions;
+      categoryData.bestScore = Math.max(categoryData.bestScore, sessionAvg);
+      categoryData.totalImprovement += sessionData.improvement || 0;
+      
+      // Update streak data
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
+      const hasYesterdaySession = newAnalytics.sessionHistory.some(s => s.date === yesterday);
+      
+      if (hasYesterdaySession || newAnalytics.streakData.current === 0) {
+        newAnalytics.streakData.current += 1;
+        newAnalytics.streakData.best = Math.max(newAnalytics.streakData.best, newAnalytics.streakData.current);
+      } else {
+        newAnalytics.streakData.current = 1;
+      }
+      
+      // Check for achievements
+      checkAndAddAchievements(newAnalytics, sessionData);
+      
+      setIterationAnalytics(newAnalytics);
+      await AsyncStorage.setItem('iterationAnalytics', JSON.stringify(newAnalytics));
+      
+    } catch (error) {
+      console.log('Error updating iteration analytics:', error);
     }
   };
 
@@ -346,45 +444,118 @@ const RecordBreath = () => {
     console.log('Show detailed progress report');
   };
 
-  // Enhanced analysis with iteration tracking
+  // Enhanced analysis with real backend integration
   const performIntelligentAnalysis = async (sample) => {
     setAnalyzing(true);
     try {
-      const analysisResult = await simulateEnhancedAnalysis(sample);
+      // Check if backend is available
+      const backendUrl = 'http://localhost:8080'; // Your Spring Boot backend
       
-      // Add iteration context
-      if (iterationMode) {
-        analysisResult.iteration = currentIteration;
-        analysisResult.sessionType = 'iterative';
-        setIterationResults(prev => [...prev, analysisResult]);
-      }
-      
-      setSamples(prev => prev.map(s => 
-        s.id === sample.id 
-          ? { ...s, analyzed: true, analysis: analysisResult }
-          : s
-      ));
-      
-      await updateSessionStats(analysisResult);
-      
-      if (iterationMode && currentIteration < maxIterations) {
-        // Ask user if they want to continue iterating
-        setTimeout(() => {
-          Alert.alert(
-            '🔄 Continue Iterating?',
-            `Current score: ${analysisResult.healthScore}/100\n` +
-            `Would you like to try another iteration for better results?`,
-            [
-              { text: 'Complete Session', onPress: completeIterativeSession },
-              { text: 'Continue', onPress: continueIteration }
-            ]
-          );
-        }, 2000);
-      } else if (iterationMode) {
-        completeIterativeSession();
-      } else {
-        setRecordingPhase('complete');
-        showSingleSessionResults(analysisResult);
+      const formData = new FormData();
+      formData.append('audio', {
+        uri: sample.uri,
+        type: 'audio/wav',
+        name: 'breathing_sample.wav',
+      });
+      formData.append('prompt', sample.prompt || '');
+      formData.append('sessionType', iterationMode ? 'iterative' : 'single');
+      formData.append('iteration', currentIteration.toString());
+      formData.append('category', selectedCategory);
+
+      try {
+        const response = await fetch(`${backendUrl}/api/analyze-breath`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.ok) {
+          const analysisResult = await response.json();
+          
+          // Add iteration context
+          if (iterationMode) {
+            analysisResult.iteration = currentIteration;
+            analysisResult.sessionType = 'iterative';
+            setIterationResults(prev => [...prev, analysisResult]);
+          }
+          
+          setSamples(prev => prev.map(s => 
+            s.id === sample.id 
+              ? { ...s, analyzed: true, analysis: analysisResult }
+              : s
+          ));
+          
+          await updateSessionStats(analysisResult);
+          await updateIterationAnalytics(analysisResult);
+          
+          if (iterationMode && currentIteration < maxIterations) {
+            // Ask user if they want to continue iterating
+            setTimeout(() => {
+              Alert.alert(
+                '🔄 Continue Iterating?',
+                `Current score: ${analysisResult.healthScore}/100\n` +
+                `Improvement potential: ${analysisResult.improvementSuggestion || 'Moderate'}\n` +
+                `Would you like to try another iteration for better results?`,
+                [
+                  { text: 'Complete Session', onPress: completeIterativeSession },
+                  { text: 'Continue', onPress: continueIteration }
+                ]
+              );
+            }, 2000);
+          } else if (iterationMode) {
+            completeIterativeSession();
+          } else {
+            setRecordingPhase('complete');
+            showSingleSessionResults(analysisResult);
+          }
+        } else {
+          throw new Error('Backend analysis failed');
+        }
+      } catch (backendError) {
+        console.log('Backend unavailable, using enhanced simulation:', backendError);
+        
+        // Enhanced simulation with more realistic data
+        const analysisResult = await simulateEnhancedAnalysis(sample);
+        
+        // Add iteration context
+        if (iterationMode) {
+          analysisResult.iteration = currentIteration;
+          analysisResult.sessionType = 'iterative';
+          setIterationResults(prev => [...prev, analysisResult]);
+        }
+        
+        setSamples(prev => prev.map(s => 
+          s.id === sample.id 
+            ? { ...s, analyzed: true, analysis: analysisResult }
+            : s
+        ));
+        
+        await updateSessionStats(analysisResult);
+        await updateIterationAnalytics(analysisResult);
+        
+        if (iterationMode && currentIteration < maxIterations) {
+          setTimeout(() => {
+            Alert.alert(
+              '🔄 Continue Iterating?',
+              `Current score: ${analysisResult.healthScore}/100\n` +
+              `Improvement from last: ${currentIteration > 1 ? 
+                `+${(analysisResult.healthScore - iterationResults[iterationResults.length - 2]?.healthScore || 0).toFixed(1)}` : 
+                'First iteration'}\n` +
+              `Would you like to try another iteration for better results?`,
+              [
+                { text: 'Complete Session', onPress: completeIterativeSession },
+                { text: 'Continue', onPress: continueIteration }
+              ]
+            );
+          }, 2000);
+        } else if (iterationMode) {
+          completeIterativeSession();
+        } else {
+          setRecordingPhase('complete');
+          showSingleSessionResults(analysisResult);
+        }
       }
       
     } catch (error) {
@@ -396,19 +567,265 @@ const RecordBreath = () => {
     }
   };
 
-  const showSingleSessionResults = (analysisResult) => {
+  // Enhanced simulation with more realistic progression
+  const simulateEnhancedAnalysis = async (sample) => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+    
+    let baseScore = 60 + Math.random() * 30; // 60-90 base
+    
+    // Apply iteration improvements if in iterative mode
+    if (iterationMode && iterationResults.length > 0) {
+      const lastScore = iterationResults[iterationResults.length - 1].healthScore;
+      const improvementFactor = 0.7; // 70% chance of improvement
+      
+      if (Math.random() < improvementFactor) {
+        // Improvement with diminishing returns
+        const maxImprovement = (100 - lastScore) * 0.3; // Max 30% of remaining room
+        const improvement = Math.random() * maxImprovement;
+        baseScore = Math.min(100, lastScore + improvement);
+      } else {
+        // Slight variation around previous score
+        baseScore = lastScore + (Math.random() - 0.5) * 10;
+        baseScore = Math.max(50, Math.min(100, baseScore));
+      }
+    }
+    
+    // Category-based adjustments
+    const categoryModifiers = {
+      'respiratory_strength': { min: 5, max: 15 },
+      'stress_relief': { min: 3, max: 12 },
+      'healing_support': { min: 8, max: 20 },
+      'wellness_maintenance': { min: 2, max: 8 }
+    };
+    
+    const modifier = categoryModifiers[selectedCategory] || { min: 0, max: 10 };
+    baseScore += Math.random() * (modifier.max - modifier.min) + modifier.min;
+    baseScore = Math.min(100, baseScore);
+    
+    const healthScore = Math.round(baseScore);
+    const riskPercentage = Math.max(0, 100 - healthScore + (Math.random() - 0.5) * 20);
+    
+    let riskLevel = 'Low';
+    if (riskPercentage > 60) riskLevel = 'High';
+    else if (riskPercentage > 30) riskLevel = 'Medium';
+    else if (riskPercentage < 15) riskLevel = 'Very Low';
+    
+    // Generate contextual insights
+    const insights = generateContextualInsights(healthScore, selectedCategory, iterationMode, currentIteration);
+    const tips = generatePersonalizedTips(healthScore, riskLevel, selectedCategory);
+    
+    return {
+      healthScore,
+      risk_level: riskLevel,
+      risk_percentage: Math.round(riskPercentage),
+      breathing_rate: (15 + Math.random() * 10).toFixed(1),
+      lung_capacity: Math.round(70 + Math.random() * 25),
+      stress_indicators: Math.round(Math.max(0, 60 - healthScore + (Math.random() - 0.5) * 30)),
+      analysis_details: {
+        breathing_consistency: Math.round(60 + Math.random() * 35),
+        voice_clarity: Math.round(70 + Math.random() * 25),
+        rhythm_stability: Math.round(65 + Math.random() * 30),
+      },
+      ai_insights: insights,
+      personalized_tips: tips,
+      recommendation: generateRecommendation(healthScore, riskLevel),
+      improvementSuggestion: generateImprovementSuggestion(healthScore, iterationMode),
+      timestamp: Date.now(),
+      category: selectedCategory,
+      session_data: {
+        prompt_effectiveness: Math.round(60 + Math.random() * 35),
+        affirmation_resonance: Math.round(55 + Math.random() * 40),
+        focus_quality: Math.round(65 + Math.random() * 30),
+      }
+    };
+  };
+
+  // Generate contextual AI insights
+  const generateContextualInsights = (score, category, isIterative, iteration) => {
+    const insights = [];
+    
+    if (isIterative) {
+      if (iteration === 1) {
+        insights.push("This is your first iteration - establishing baseline health metrics");
+      } else {
+        const improvement = iteration > 1 ? "showing progressive improvement" : "maintaining good patterns";
+        insights.push(`Iteration ${iteration} ${improvement} in breathing quality`);
+      }
+    }
+    
+    if (score >= 85) {
+      insights.push("Excellent respiratory health indicators detected");
+      insights.push("Your breathing patterns show optimal rhythm and depth");
+    } else if (score >= 70) {
+      insights.push("Good breathing patterns with room for optimization");
+      insights.push("Consider focusing on deeper, more controlled breaths");
+    } else {
+      insights.push("Breathing patterns suggest stress or tension");
+      insights.push("Recommended: practice relaxation techniques");
+    }
+    
+    // Category-specific insights
+    const categoryInsights = {
+      'respiratory_strength': ["Your lung capacity shows strong potential", "Voice resonance indicates healthy respiratory function"],
+      'stress_relief': ["Breathing rhythm suggests relaxation response", "Stress indicators are within manageable range"],
+      'healing_support': ["Healing affirmations appear to resonate well", "Body-mind connection is strengthening"],
+      'wellness_maintenance': ["Consistent practice is maintaining good health", "Your wellness routine is showing positive effects"]
+    };
+    
+    insights.push(...(categoryInsights[category] || []));
+    
+    return insights.slice(0, 3); // Limit to 3 most relevant insights
+  };
+
+  // Generate personalized tips
+  const generatePersonalizedTips = (score, riskLevel, category) => {
+    const tips = [];
+    
+    if (riskLevel === 'High') {
+      tips.push("Try 4-7-8 breathing: inhale 4 counts, hold 7, exhale 8");
+      tips.push("Practice twice daily for optimal respiratory health");
+    } else if (riskLevel === 'Medium') {
+      tips.push("Focus on extending your exhale slightly longer than inhale");
+      tips.push("Regular practice will improve your breathing patterns");
+    } else {
+      tips.push("Maintain your excellent breathing habits");
+      tips.push("Consider exploring advanced breathing techniques");
+    }
+    
+    // Category-specific tips
+    const categoryTips = {
+      'respiratory_strength': ["Include cardio exercises to build lung capacity", "Practice diaphragmatic breathing daily"],
+      'stress_relief': ["Try progressive muscle relaxation", "Use breathing as an anchor during stressful moments"],
+      'healing_support': ["Combine breathing with gentle movement", "Visualize healing energy with each breath"],
+      'wellness_maintenance': ["Set regular breathing practice reminders", "Track your progress over time"]
+    };
+    
+    tips.push(...(categoryTips[category] || []));
+    
+    return tips.slice(0, 3);
+  };
+
+  // Generate recommendations
+  const generateRecommendation = (score, riskLevel) => {
+    if (riskLevel === 'High') {
+      return "Consider consulting a healthcare provider and practicing stress-reduction techniques daily.";
+    } else if (riskLevel === 'Medium') {
+      return "Regular breathing exercises and mindfulness practice recommended.";
+    } else {
+      return "Continue your excellent breathing habits and consider advanced techniques.";
+    }
+  };
+
+  // Generate improvement suggestions
+  const generateImprovementSuggestion = (score, isIterative) => {
+    if (!isIterative) return null;
+    
+    if (score >= 90) return "Minimal - you're performing excellently";
+    if (score >= 75) return "Moderate - focus on consistency";
+    if (score >= 60) return "Good - try deeper breathing";
+    return "High - relaxation techniques recommended";
+  };
+
+  // Show detailed analytics modal
+  const showAnalyticsModal = () => {
+    const recentSessions = iterationAnalytics.sessionHistory.slice(-10);
+    const avgImprovement = recentSessions.reduce((sum, s) => sum + s.improvement, 0) / recentSessions.length || 0;
+    const bestCategory = Object.keys(iterationAnalytics.categoryPerformance).reduce((best, category) => {
+      return iterationAnalytics.categoryPerformance[category].avgScore > 
+             (iterationAnalytics.categoryPerformance[best]?.avgScore || 0) ? category : best;
+    }, Object.keys(iterationAnalytics.categoryPerformance)[0]);
+
     Alert.alert(
-      '🧠 AI Analysis Complete',
-      `Health Score: ${analysisResult.healthScore}/100\n` +
-      `Risk Level: ${analysisResult.risk_level}\n` +
-      `Breathing Rate: ${analysisResult.breathing_rate} bpm\n` +
-      `Recommendation: ${analysisResult.recommendation}`,
+      '📊 Your Analytics',
+      `Recent Performance:\n` +
+      `• Average Improvement: +${avgImprovement.toFixed(1)} points\n` +
+      `• Current Streak: ${iterationAnalytics.streakData.current} days\n` +
+      `• Best Streak: ${iterationAnalytics.streakData.best} days\n` +
+      `• Best Category: ${bestCategory?.replace('_', ' ')}\n` +
+      `• Total Sessions: ${iterationAnalytics.sessionHistory.length}\n` +
+      `• Achievements: ${iterationAnalytics.achievementsMilestones.length}`,
       [
-        { text: 'Start Iterative Session', onPress: startIterativeSession },
-        { text: 'View Details', onPress: () => {} },
-        { text: 'OK', onPress: () => setRecordingPhase('idle') }
+        { text: 'View Achievements', onPress: showAchievements },
+        { text: 'OK' }
       ]
     );
+  };
+
+  const showAchievements = () => {
+    const recentAchievements = iterationAnalytics.achievementsMilestones.slice(-5);
+    const achievementText = recentAchievements.length > 0 
+      ? recentAchievements.map(a => `${a.title}\n${a.description}`).join('\n\n')
+      : 'No achievements yet. Keep practicing!';
+
+    Alert.alert(
+      '🏆 Recent Achievements',
+      achievementText,
+      [{ text: 'Keep Going!' }]
+    );
+  };
+
+  const getWeekNumber = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+  };
+
+  const checkAndAddAchievements = (analytics, sessionData) => {
+    const achievements = [];
+    
+    // First iterative session
+    if (iterationMode && analytics.sessionHistory.filter(s => s.sessionType === 'iterative').length === 1) {
+      achievements.push({
+        id: 'first_iterative',
+        title: '🔄 First Iterative Session',
+        description: 'Completed your first iterative breathing session',
+        date: new Date().toISOString(),
+        category: 'milestone'
+      });
+    }
+    
+    // Perfect score achievement
+    if (iterationResults.some(r => r.healthScore >= 95)) {
+      achievements.push({
+        id: 'perfect_score',
+        title: '⭐ Perfect Breathing',
+        description: 'Achieved a health score of 95 or higher',
+        date: new Date().toISOString(),
+        category: 'performance'
+      });
+    }
+    
+    // Improvement achievement
+    if (sessionData.improvement >= 20) {
+      achievements.push({
+        id: 'big_improvement',
+        title: '📈 Major Improvement',
+        description: 'Improved by 20+ points in a single session',
+        date: new Date().toISOString(),
+        category: 'progress'
+      });
+    }
+    
+    // Streak achievements
+    if (analytics.streakData.current === 7) {
+      achievements.push({
+        id: 'week_streak',
+        title: '🔥 Week Streak',
+        description: 'Practiced breathing for 7 consecutive days',
+        date: new Date().toISOString(),
+        category: 'consistency'
+      });
+    }
+    
+    // Add new achievements
+    achievements.forEach(achievement => {
+      if (!analytics.achievementsMilestones.find(a => a.id === achievement.id)) {
+        analytics.achievementsMilestones.push(achievement);
+      }
+    });
   };
 
   const startRecordingAnimations = () => {
@@ -450,6 +867,55 @@ const RecordBreath = () => {
     fadeAnim.setValue(0);
   };
 
+  const actualStartRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission denied', 'We need microphone access to record breathing sounds.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync({
+        ...Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY,
+        android: {
+          extension: '.wav',
+          outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_DEFAULT,
+          audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_DEFAULT,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+        },
+        ios: {
+          extension: '.wav',
+          audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+        },
+      });
+
+      setRecording(recording);
+      setIsRecording(true);
+      setRecordingTime(0);
+      setRecordingPhase('recording');
+      setShowPrompt(false);
+      
+      startRecordingAnimations();
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
+      setRecordingPhase('idle');
+    }
+  };
+
   const uploadFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -461,7 +927,7 @@ const RecordBreath = () => {
         const newSample = {
           id: Date.now().toString(),
           uri: result.uri,
-          duration: 0, // Will be determined when analyzed
+          duration: 0,
           timestamp: Date.now(),
           analyzed: false,
           fileName: result.name,
@@ -473,7 +939,6 @@ const RecordBreath = () => {
         setSamples(prevSamples => [newSample, ...prevSamples]);
         setUploadProgress(0);
         
-        // Auto-analyze uploaded file
         await performIntelligentAnalysis(newSample);
       }
     } catch (error) {
@@ -505,909 +970,973 @@ const RecordBreath = () => {
     );
   };
 
+  const showSingleSessionResults = (analysisResult) => {
+    Alert.alert(
+      '🧠 AI Analysis Complete',
+      `Health Score: ${analysisResult.healthScore}/100\n` +
+      `Risk Level: ${analysisResult.risk_level}\n` +
+      `Breathing Rate: ${analysisResult.breathing_rate} bpm\n` +
+      `Recommendation: ${analysisResult.recommendation}`,
+      [
+        { text: 'Start Iterative Session', onPress: startIterativeSession },
+        { text: 'View Analytics', onPress: showAnalyticsModal },
+        { text: 'OK', onPress: () => setRecordingPhase('idle') }
+      ]
+    );
+  };
+
+  // Modal state
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showIterativeResults, setShowIterativeResults] = useState(false);
+
+  // Add biometric monitoring functions
+  const startBiometricTracking = () => {
+    setBiometricTracking(true);
+    
+    // Simulate heart rate monitoring (in real app, use actual sensor data)
+    const heartRateInterval = setInterval(() => {
+      if (isRecording) {
+        const baseHeartRate = 70;
+        const variation = Math.random() * 20 - 10; // ±10 bpm variation
+        const currentRate = Math.round(baseHeartRate + variation);
+        
+        setHeartRateData(prev => [...prev.slice(-30), { // Keep last 30 readings
+          timestamp: Date.now(),
+          rate: currentRate,
+          iteration: currentIteration
+        }]);
+        
+        // Calculate running average
+        setAverageHeartRate(prev => {
+          const newAvg = heartRateData.length > 0 ? 
+            heartRateData.reduce((sum, reading) => sum + reading.rate, 0) / heartRateData.length : 
+            currentRate;
+          return Math.round(newAvg);
+        });
+      }
+    }, 1000);
+    
+    return () => clearInterval(heartRateInterval);
+  };
+
+  const calculateHeartRateVariability = () => {
+    if (heartRateData.length < 10) return 0;
+    
+    const intervals = [];
+    for (let i = 1; i < heartRateData.length; i++) {
+      intervals.push(Math.abs(heartRateData[i].rate - heartRateData[i-1].rate));
+    }
+    
+    const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+    setHeartRateVariability(Math.round(avgInterval * 10) / 10);
+    return avgInterval;
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <LinearGradient
-        colors={['#1a1a2e', '#16213e', '#0f3460']}
-        style={styles.background}
-      >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Enhanced Header with Session Mode Selector */}
-          <View style={styles.header}>
-            <Text style={styles.title}>🫁 Smart Breath Analysis</Text>
-            <Text style={styles.subtitle}>
-              {iterationMode ? 
-                `Iterative Session ${currentIteration}/${maxIterations}` :
-                'AI-powered respiratory health monitoring'
-              }
-            </Text>
-            
-            {/* Session Mode Selection */}
-            {!iterationMode && recordingPhase === 'idle' && (
-              <View style={styles.sessionModeContainer}>
-                <Text style={styles.sessionModeTitle}>📊 Session Type</Text>
-                <View style={styles.sessionModeButtons}>
-                  <TouchableOpacity
-                    style={[styles.sessionModeButton, sessionMode === 'single' && styles.sessionModeButtonActive]}
-                    onPress={() => setSessionMode('single')}
-                  >
-                    <Text style={[styles.sessionModeButtonText, sessionMode === 'single' && styles.sessionModeButtonTextActive]}>
-                      Single Recording
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.sessionModeButton, sessionMode === 'iterative' && styles.sessionModeButtonActive]}
-                    onPress={() => setSessionMode('iterative')}
-                  >
-                    <Text style={[styles.sessionModeButtonText, sessionMode === 'iterative' && styles.sessionModeButtonTextActive]}>
-                      Iterative Session
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            
-            {/* Affirmation Category Selection */}
-            {!iterationMode && recordingPhase === 'idle' && (
-              <View style={styles.categoryContainer}>
-                <Text style={styles.categoryTitle}>💫 Focus Area</Text>
-                <View style={styles.categoryButtons}>
-                  {Object.keys(HEALTH_AFFIRMATIONS).map((category) => (
-                    <TouchableOpacity
-                      key={category}
-                      style={[styles.categoryButton, selectedCategory === category && styles.categoryButtonActive]}
-                      onPress={() => setSelectedCategory(category)}
-                    >
-                      <Text style={[styles.categoryButtonText, selectedCategory === category && styles.categoryButtonTextActive]}>
-                        {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
+      
+      {/* Enhanced Header with Analytics Button */}
+      <View style={styles.header}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>🫁 Smart Breath Analysis</Text>
+          <TouchableOpacity 
+            style={styles.analyticsButton}
+            onPress={showAnalyticsModal}
+          >
+            <LinearGradient
+              colors={['rgba(0, 255, 255, 0.2)', 'rgba(0, 128, 255, 0.2)']}
+              style={styles.analyticsGradient}
+            >
+              <Ionicons name="analytics" size={20} color="#00ffff" />
+              <Text style={styles.analyticsText}>Analytics</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.subtitle}>
+          {iterationMode ? 
+            `Iterative Session ${currentIteration}/${maxIterations}` :
+            'AI-powered respiratory health monitoring'
+          }
+        </Text>
+        
+        {/* Quick Stats Display */}
+        {iterationAnalytics.sessionHistory.length > 0 && (
+          <View style={styles.quickStatsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{iterationAnalytics.streakData.current}</Text>
+              <Text style={styles.statLabel}>Day Streak</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{iterationAnalytics.sessionHistory.length}</Text>
+              <Text style={styles.statLabel}>Total Sessions</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{iterationAnalytics.achievementsMilestones.length}</Text>
+              <Text style={styles.statLabel}>Achievements</Text>
+            </View>
           </View>
+        )}
+      </View>
 
-          {/* Session Progress Indicator */}
-          {iterationMode && (
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressTitle}>Session Progress</Text>
-              <View style={styles.progressBar}>
-                {[...Array(maxIterations)].map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.progressStep,
-                      index < currentIteration && styles.progressStepComplete,
-                      index === currentIteration - 1 && styles.progressStepActive
-                    ]}
-                  >
-                    <Text style={styles.progressStepText}>{index + 1}</Text>
-                  </View>
-                ))}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Recording and Analysis UI */}
+        <View style={styles.recordingContainer}>
+          {recordingPhase === 'idle' && (
+            <TouchableOpacity style={styles.startButton} onPress={startIntelligentRecording}>
+              <Text style={styles.startButtonText}>Start Intelligent Recording</Text>
+            </TouchableOpacity>
+          )}
+          
+          {recordingPhase === 'prompt' && showPrompt && (
+            <View style={styles.promptContainer}>
+              <Text style={styles.promptText}>{currentPrompt}</Text>
+            </View>
+          )}
+          
+          {isRecording && (
+            <View style={styles.recordingStatus}>
+              <Text style={styles.recordingText}>Recording... {formatTime(recordingTime)}</Text>
+              <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
+                <Text style={styles.stopButtonText}>Stop Recording</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {analyzing && (
+            <View style={styles.analyzingContainer}>
+              <ActivityIndicator size="large" color="#00ffff" />
+              <Text style={styles.analyzingText}>Analyzing... Please wait</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Biometric Monitoring Panel */}
+        {isRecording && biometricTracking && (
+          <View style={styles.biometricPanel}>
+            <Text style={styles.biometricTitle}>Live Biometrics</Text>
+            <View style={styles.biometricRow}>
+              <View style={styles.biometricItem}>
+                <Text style={styles.biometricValue}>{heartRateData[heartRateData.length - 1]?.rate || '--'}</Text>
+                <Text style={styles.biometricLabel}>BPM</Text>
               </View>
-              {iterationResults.length > 0 && (
-                <Text style={styles.progressScore}>
-                  Latest Score: {iterationResults[iterationResults.length - 1].healthScore}/100
+              <View style={styles.biometricItem}>
+                <Text style={styles.biometricValue}>{averageHeartRate}</Text>
+                <Text style={styles.biometricLabel}>Avg HR</Text>
+              </View>
+              <View style={styles.biometricItem}>
+                <Text style={styles.biometricValue}>{heartRateVariability}</Text>
+                <Text style={styles.biometricLabel}>HRV</Text>
+              </View>
+            </View>
+            
+            {/* Heart Rate Trend Mini Chart */}
+            <View style={styles.heartRateChart}>
+              {heartRateData.slice(-10).map((reading, index) => (
+                <View 
+                  key={index}
+                  style={[
+                    styles.heartRateBar,
+                    { 
+                      height: Math.max(5, (reading.rate / 100) * 40),
+                      backgroundColor: reading.rate > 80 ? '#ff6b6b' : reading.rate < 60 ? '#4ecdc4' : '#45b7d1'
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Session Results */}
+        {samples.length > 0 && (
+          <View style={styles.resultsContainer}>
+            <Text style={styles.resultsTitle}>Session Results</Text>
+            {samples.map((sample, index) => (
+              <View key={sample.id} style={styles.resultCard}>
+                <Text style={styles.resultLabel}>Sample {index + 1}</Text>
+                <Text style={styles.resultValue}>Duration: {sample.duration} seconds</Text>
+                <Text style={styles.resultValue}>Timestamp: {new Date(sample.timestamp).toLocaleString()}</Text>
+                <Text style={styles.resultValue}>Analyzed: {sample.analyzed ? 'Yes' : 'No'}</Text>
+                {sample.analyzed && sample.analysis && (
+                  <View style={styles.analysisDetails}>
+                    <Text style={styles.resultValue}>Health Score: {sample.analysis.healthScore}/100</Text>
+                    <Text style={styles.resultValue}>Risk Level: {sample.analysis.risk_level}</Text>
+                    <Text style={styles.resultValue}>Improvement Suggestion: {sample.analysis.improvementSuggestion}</Text>
+                    <Text style={styles.resultValue}>Breathing Rate: {sample.analysis.breathing_rate} bpm</Text>
+                    <Text style={styles.resultValue}>Lung Capacity: {sample.analysis.lung_capacity} ml</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Session Stats and Controls */}
+        <View style={styles.sessionControls}>
+          <TouchableOpacity style={styles.statsButton} onPress={showAnalyticsModal}>
+            <Ionicons name="bar-chart" size={24} color="#fff" />
+            <Text style={styles.statsButtonText}>View Detailed Stats</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.newSessionButton} onPress={() => setRecordingPhase('idle')}>
+            <Text style={styles.newSessionButtonText}>New Session</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Analytics Modal */}
+      <Modal visible={showAnalytics} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>📊 Analytics Dashboard</Text>
+            <TouchableOpacity onPress={() => setShowAnalytics(false)} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.analyticsContent}>
+            {/* Session Summary */}
+            <View style={styles.analyticsCard}>
+              <Text style={styles.cardTitle}>📈 Session Summary</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Sessions:</Text>
+                <Text style={styles.summaryValue}>{iterationAnalytics.sessionHistory.length}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Iterative Sessions:</Text>
+                <Text style={styles.summaryValue}>
+                  {iterationAnalytics.sessionHistory.filter(s => s.sessionType === 'iterative').length}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Average Score:</Text>
+                <Text style={styles.summaryValue}>
+                  {iterationAnalytics.sessionHistory.length > 0 
+                    ? Math.round(iterationAnalytics.sessionHistory.reduce((sum, s) => sum + s.healthScore, 0) / iterationAnalytics.sessionHistory.length)
+                    : 0}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Current Streak:</Text>
+                <Text style={styles.summaryValue}>{iterationAnalytics.streakData.current} days</Text>
+              </View>
+            </View>
+
+            {/* Improvement Trends */}
+            <View style={styles.analyticsCard}>
+              <Text style={styles.cardTitle}>🚀 Improvement Trends</Text>
+              <View style={styles.trendItem}>
+                <Text style={styles.trendLabel}>Weekly Average:</Text>
+                <Text style={styles.trendValue}>
+                  {iterationAnalytics.weeklyProgress.length > 0 
+                    ? `${Math.round(iterationAnalytics.weeklyProgress[iterationAnalytics.weeklyProgress.length - 1].avgScore)}/100`
+                    : 'No data'}
+                </Text>
+              </View>
+              <View style={styles.trendItem}>
+                <Text style={styles.trendLabel}>Best Session:</Text>
+                <Text style={styles.trendValue}>
+                  {iterationAnalytics.sessionHistory.length > 0 
+                    ? `${Math.max(...iterationAnalytics.sessionHistory.map(s => s.healthScore))}/100`
+                    : 'No data'}
+                </Text>
+              </View>
+              <View style={styles.trendItem}>
+                <Text style={styles.trendLabel}>Total Improvement:</Text>
+                <Text style={styles.trendValue}>
+                  {iterationAnalytics.sessionHistory.length >= 2 
+                    ? `+${Math.round(
+                        iterationAnalytics.sessionHistory[iterationAnalytics.sessionHistory.length - 1].healthScore - 
+                        iterationAnalytics.sessionHistory[0].healthScore
+                      )} points`
+                    : 'Keep practicing!'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Achievements */}
+            <View style={styles.analyticsCard}>
+              <Text style={styles.cardTitle}>🏆 Achievements</Text>
+              {iterationAnalytics.achievementsMilestones.length > 0 ? (
+                iterationAnalytics.achievementsMilestones.map((achievement, index) => (
+                  <View key={index} style={styles.achievementItem}>
+                    <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                    <Text style={styles.achievementDesc}>{achievement.description}</Text>
+                    <Text style={styles.achievementDate}>
+                      {new Date(achievement.date).toLocaleDateString()}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noAchievements}>
+                  Complete your first session to start earning achievements! 🎯
                 </Text>
               )}
             </View>
-          )}
 
-          {/* Enhanced Recording Interface */}
-          <Animated.View style={[styles.recordingContainer, { transform: [{ scale: scaleAnim }] }]}>
-            <TouchableOpacity
-              style={styles.recordButton}
-              onPress={sessionMode === 'iterative' && !iterationMode ? startIterativeSession : startIntelligentRecording}
-              disabled={recordingPhase === 'recording' || recordingPhase === 'analyzing'}
-            >
-              <LinearGradient
-                colors={
-                  recordingPhase === 'recording' ? ['#ff6b6b', '#ff5252'] :
-                  recordingPhase === 'analyzing' ? ['#ffaa00', '#ff8f00'] :
-                  recordingPhase === 'complete' ? ['#00ff88', '#00e676'] :
-                  iterationMode ? ['#9c27b0', '#673ab7'] :
-                  ['#00ffff', '#0080ff']
+            {/* Health Insights */}
+            <View style={styles.analyticsCard}>
+              <Text style={styles.cardTitle}>💡 Health Insights</Text>
+              <Text style={styles.insightText}>
+                {iterationAnalytics.sessionHistory.length === 0 
+                  ? "Start your breathing journey to unlock personalized health insights!"
+                  : iterationAnalytics.sessionHistory.length < 3
+                  ? "Complete a few more sessions to see detailed health patterns and recommendations."
+                  : `Based on ${iterationAnalytics.sessionHistory.length} sessions, your breathing shows ${
+                      iterationAnalytics.sessionHistory.slice(-3).every((s, i, arr) => 
+                        i === 0 || s.healthScore >= arr[i-1].healthScore
+                      ) ? "consistent improvement" : "good progress"
+                    }. ${
+                      iterationAnalytics.sessionHistory.filter(s => s.sessionType === 'iterative').length > 0
+                      ? "Your iterative sessions show enhanced mindfulness and technique refinement."
+                      : "Try iterative sessions for deeper breathing practice and better results."
+                    }`
                 }
-                style={styles.recordGradient}
-              >
-                <Ionicons 
-                  name={
-                    recordingPhase === 'recording' ? "stop" :
-                    recordingPhase === 'analyzing' ? "hourglass" :
-                    recordingPhase === 'complete' ? "checkmark" :
-                    recordingPhase === 'prompt' ? "book" :
-                    iterationMode ? "repeat" :
-                    sessionMode === 'iterative' ? "layers" :
-                    "mic"
-                  } 
-                  size={40} 
-                  color="#fff" 
-                />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
-          <View style={styles.recordingInfo}>
-            <Text style={styles.recordingStatus}>
-              {recordingPhase === 'idle' ? 
-                (sessionMode === 'iterative' ? 'Start Iterative Session' : 'Tap to Start Intelligent Recording') :
-               recordingPhase === 'prompt' ? 'Read the affirmation aloud...' :
-               recordingPhase === 'recording' ? `Recording: ${formatTime(recordingTime)}` :
-               recordingPhase === 'analyzing' ? 'AI is analyzing your breath patterns...' :
-               'Analysis Complete! Check your results below.'
-              }
-            </Text>
-            
-            {recordingPhase === 'recording' && (
-              <Animated.View style={[styles.recordingIndicator, { opacity: fadeAnim }]}>
-                <View style={styles.waveform}>
-                  {[...Array(8)].map((_, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        styles.waveBar,
-                        {
-                          height: Math.random() * 20 + 5,
-                          backgroundColor: '#ff6b6b',
-                        }
-                      ]}
-                    />
-                  ))}
-                </View>
-                <Text style={styles.liveIndicator}>● LIVE ANALYSIS</Text>
-              </Animated.View>
-            )}
-          </View>
-
-          {/* Iteration Results Summary */}
-          {iterationMode && iterationResults.length > 0 && (
-            <View style={styles.iterationSummary}>
-              <Text style={styles.iterationSummaryTitle}>📈 Iteration Results</Text>
-              {iterationResults.map((result, index) => (
-                <View key={index} style={styles.iterationItem}>
-                  <View style={styles.iterationHeader}>
+      {/* Iterative Session Completion Modal */}
+      {showIterativeResults && (
+        <Modal visible={true} animationType="slide" transparent={true}>
+          <View style={styles.iterativeModalOverlay}>
+            <View style={styles.iterativeModalContent}>
+              <Text style={styles.iterativeModalTitle}>🎉 Session Complete!</Text>
+              
+              <View style={styles.iterationSummary}>
+                <Text style={styles.iterationSummaryTitle}>Iteration Progress:</Text>
+                {iterationResults.map((result, index) => (
+                  <View key={index} style={styles.iterationItem}>
                     <Text style={styles.iterationNumber}>#{index + 1}</Text>
-                    <Text style={styles.iterationScore}>{result.healthScore}/100</Text>
-                    <Text style={[styles.iterationRisk, { color: getRiskColor(result.risk_level) }]}>
-                      {result.risk_level}
-                    </Text>
-                  </View>
-                  <Text style={styles.iterationImprovement}>
-                    {index > 0 && (
-                      result.healthScore - iterationResults[index - 1].healthScore > 0 
-                        ? `+${(result.healthScore - iterationResults[index - 1].healthScore).toFixed(1)} improvement`
-                        : `${(result.healthScore - iterationResults[index - 1].healthScore).toFixed(1)} change`
-                    )}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Health Affirmation Prompt */}
-          {showPrompt && (
-            <View style={styles.promptContainer}>
-              <LinearGradient
-                colors={['rgba(0, 255, 255, 0.15)', 'rgba(0, 128, 255, 0.15)']}
-                style={styles.promptCard}
-              >
-                <Text style={styles.promptTitle}>💫 Health Affirmation</Text>
-                <Text style={styles.promptText}>{currentPrompt}</Text>
-                <Text style={styles.promptInstruction}>
-                  Read this affirmation aloud clearly for best analysis results
-                </Text>
-              </LinearGradient>
-            </View>
-          )}
-
-          {/* Enhanced Upload Section */}
-          <View style={styles.uploadContainer}>
-            <LinearGradient
-              colors={['rgba(0, 255, 255, 0.1)', 'rgba(0, 128, 255, 0.1)']}
-              style={styles.uploadCard}
-            >
-              <View style={styles.uploadContent}>
-                <Ionicons name="cloud-upload-outline" size={32} color="#00ffff" />
-                <Text style={styles.uploadTitle}>Upload Audio File</Text>
-                <Text style={styles.uploadSubtitle}>
-                  Upload an existing breathing recording for analysis
-                </Text>
-
-                {uploadProgress > 0 && (
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />
+                    <View style={styles.iterationScores}>
+                      <Text style={styles.iterationScore}>{result.healthScore}/100</Text>
+                      {index > 0 && (
+                        <Text style={[
+                          styles.iterationImprovement,
+                          result.improvement >= 0 ? styles.positive : styles.negative
+                        ]}>
+                          {result.improvement >= 0 ? '+' : ''}{result.improvement}
+                        </Text>
+                      )}
                     </View>
-                    <Text style={styles.progressText}>{uploadProgress}%</Text>
-                  </View>
-                )}
-
-                <TouchableOpacity 
-                  style={styles.uploadButton} 
-                  onPress={uploadFile}
-                  disabled={uploadProgress > 0}
-                >
-                  <LinearGradient
-                    colors={uploadProgress > 0 ? ['#666', '#666'] : ['#00ffff', '#0080ff']}
-                    style={styles.uploadButtonGradient}
-                  >
-                    <Ionicons 
-                      name={uploadProgress > 0 ? "hourglass-outline" : "folder-open-outline"} 
-                      size={20} 
-                      color="#fff" 
-                    />
-                    <Text style={styles.uploadButtonText}>
-                      {uploadProgress > 0 ? 'Uploading...' : 'Choose File'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
-          </View>
-
-          {/* Enhanced Samples List with Analysis Results */}
-          <View style={styles.samplesContainer}>
-            <View style={styles.samplesHeader}>
-              <Text style={styles.samplesTitle}>Recent Sessions</Text>
-              <Text style={styles.samplesCount}>{samples.length} recordings</Text>
-            </View>
-
-            {samples.length === 0 ? (
-              <View style={styles.emptyState}>
-                <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
-                  style={styles.emptyStateGradient}
-                >
-                  <Ionicons name="mic-outline" size={64} color="#666" />
-                  <Text style={styles.emptyStateText}>No recordings yet</Text>
-                  <Text style={styles.emptyStateSubtext}>
-                    Start your first intelligent recording session
-                  </Text>
-                </LinearGradient>
-              </View>
-            ) : (
-              <View style={styles.samplesList}>
-                {samples.map((sample) => (
-                  <View key={sample.id} style={styles.sampleCard}>
-                    <LinearGradient
-                      colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-                      style={styles.sampleGradient}
-                    >
-                      {/* Sample Header */}
-                      <View style={styles.sampleHeader}>
-                        <View style={styles.sampleInfo}>
-                          <Text style={styles.sampleTime}>
-                            {new Date(sample.timestamp).toLocaleTimeString()}
-                          </Text>
-                          <Text style={styles.sampleDuration}>
-                            {formatTime(sample.duration)} • {sample.sessionType || 'Standard Recording'}
-                          </Text>
-                          {sample.prompt && (
-                            <Text style={styles.samplePrompt} numberOfLines={2}>
-                              💭 "{sample.prompt}"
-                            </Text>
-                          )}
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => deleteSample(sample.id)}
-                          style={styles.deleteButton}
-                        >
-                          <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Enhanced Analysis Results */}
-                      {sample.analyzed && sample.analysis && (
-                        <View style={styles.enhancedAnalysisContainer}>
-                          <Text style={styles.analysisTitle}>🧠 AI Health Analysis</Text>
-                          
-                          {/* Health Score Display */}
-                          <View style={styles.healthScoreContainer}>
-                            <View style={styles.scoreCircle}>
-                              <Text style={styles.scoreNumber}>{sample.analysis.healthScore}</Text>
-                              <Text style={styles.scoreLabel}>Health Score</Text>
-                            </View>
-                            <View style={styles.riskIndicator}>
-                              <Text style={[styles.riskLevel, { color: getRiskColor(sample.analysis.risk_level) }]}>
-                                {sample.analysis.risk_level} Risk
-                              </Text>
-                              <Text style={styles.riskPercentage}>{sample.analysis.risk_percentage}%</Text>
-                            </View>
-                          </View>
-
-                          {/* Key Metrics */}
-                          <View style={styles.metricsGrid}>
-                            <View style={styles.metricItem}>
-                              <Text style={styles.metricValue}>{sample.analysis.breathing_rate}</Text>
-                              <Text style={styles.metricLabel}>BPM</Text>
-                            </View>
-                            <View style={styles.metricItem}>
-                              <Text style={styles.metricValue}>{sample.analysis.lung_capacity}%</Text>
-                              <Text style={styles.metricLabel}>Lung Capacity</Text>
-                            </View>
-                            <View style={styles.metricItem}>
-                              <Text style={styles.metricValue}>{sample.analysis.stress_indicators}%</Text>
-                              <Text style={styles.metricLabel}>Stress Level</Text>
-                            </View>
-                          </View>
-
-                          {/* AI Insights */}
-                          <View style={styles.insightsContainer}>
-                            <Text style={styles.insightsTitle}>💡 AI Insights</Text>
-                            {sample.analysis.ai_insights?.map((insight, index) => (
-                              <Text key={index} style={styles.insightText}>• {insight}</Text>
-                            ))}
-                          </View>
-
-                          {/* Personalized Tips */}
-                          <View style={styles.tipsContainer}>
-                            <Text style={styles.tipsTitle}>🎯 Personalized Tips</Text>
-                            {sample.analysis.personalized_tips?.map((tip, index) => (
-                              <Text key={index} style={styles.tipText}>• {tip}</Text>
-                            ))}
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Analysis in progress indicator */}
-                      {analyzing && !sample.analyzed && (
-                        <View style={styles.analyzingContainer}>
-                          <ActivityIndicator size="large" color="#00ffff" />
-                          <Text style={styles.analyzingText}>AI is analyzing your breath patterns...</Text>
-                        </View>
-                      )}
-                    </LinearGradient>
                   </View>
                 ))}
               </View>
-            )}
+
+              <View style={styles.sessionStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Total Improvement</Text>
+                  <Text style={styles.statValue}>
+                    +{iterationResults.length > 1 
+                      ? Math.round(iterationResults[iterationResults.length - 1].healthScore - iterationResults[0].healthScore)
+                      : 0} points
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Best Score</Text>
+                  <Text style={styles.statValue}>
+                    {Math.max(...iterationResults.map(r => r.healthScore))}/100
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.iterativeModalButtons}>
+                <TouchableOpacity 
+                  style={styles.analyticsButton} 
+                  onPress={() => {
+                    setShowIterativeResults(false);
+                    showAnalyticsModal();
+                  }}
+                >
+                  <Text style={styles.analyticsButtonText}>📊 View Analytics</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.doneButton} 
+                  onPress={() => {
+                    setShowIterativeResults(false);
+                    setRecordingPhase('idle');
+                    setIterationMode(false);
+                    setIterationResults([]);
+                    setCurrentIteration(0);
+                  }}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </ScrollView>
-      </LinearGradient>
+        </Modal>
+      )}
     </View>
   );
 };
 
-// Enhanced styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#121212',
   },
   header: {
-    marginBottom: 20,
+    paddingTop: StatusBar.currentHeight + 10,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#1e1e1e',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
   },
-  headerGradient: {
-    padding: 20,
-    borderRadius: 16,
-    margin: 16,
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#00ffff',
+  },
+  analyticsButton: {
+    padding: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  analyticsGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 5,
+    borderRadius: 15,
+  },
+  analyticsText: {
+    marginLeft: 5,
+    fontSize: 16,
+    color: '#00ffff',
   },
   subtitle: {
     fontSize: 16,
     color: '#aaa',
-    textAlign: 'center',
-    marginBottom: 20,
+    marginTop: 5,
   },
-  sessionModeContainer: {
-    marginTop: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
-    padding: 15,
-  },
-  sessionModeTitle: {
-    color: '#00ffff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  sessionModeButtons: {
+  quickStatsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    marginTop: 10,
   },
-  sessionModeButton: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  sessionModeButtonActive: {
-    backgroundColor: 'rgba(0, 255, 255, 0.2)',
-    borderColor: '#00ffff',
-  },
-  sessionModeButtonText: {
-    color: '#ccc',
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  sessionModeButtonTextActive: {
-    color: '#00ffff',
-    fontWeight: '600',
-  },
-  categoryContainer: {
-    marginTop: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
-    padding: 15,
-  },
-  categoryTitle: {
-    color: '#00ffff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  categoryButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  categoryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    margin: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  categoryButtonActive: {
-    backgroundColor: 'rgba(156, 39, 176, 0.3)',
-    borderColor: '#9c27b0',
-  },
-  categoryButtonText: {
-    color: '#ccc',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  categoryButtonTextActive: {
-    color: '#9c27b0',
-    fontWeight: '600',
-  },
-  progressContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  progressTitle: {
-    color: '#00ffff',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  progressBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  statItem: {
     alignItems: 'center',
-    marginBottom: 10,
   },
-  progressStep: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 5,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  progressStepComplete: {
-    backgroundColor: 'rgba(0, 255, 136, 0.3)',
-    borderColor: '#00ff88',
-  },
-  progressStepActive: {
-    backgroundColor: 'rgba(0, 255, 255, 0.3)',
-    borderColor: '#00ffff',
-  },
-  progressStepText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  progressScore: {
-    color: '#00ff88',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  iterationSummary: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  iterationSummaryTitle: {
-    color: '#00ffff',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  iterationItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-  },
-  iterationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  iterationNumber: {
-    color: '#00ffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  iterationScore: {
-    color: '#00ff88',
+  statValue: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#00ff88',
   },
-  iterationRisk: {
+  statLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#aaa',
   },
-  iterationImprovement: {
-    color: '#ccc',
-    fontSize: 12,
-    fontStyle: 'italic',
+  scrollContainer: {
+    padding: 20,
   },
   recordingContainer: {
-    margin: 16,
-    marginBottom: 20,
-  },
-  recordingCardGradient: {
-    borderRadius: 20,
-    padding: 24,
     alignItems: 'center',
+    marginBottom: 30,
   },
-  recordButton: {
-    marginBottom: 20,
+  startButton: {
+    backgroundColor: '#00ffff',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    elevation: 5,
   },
-  recordTouchable: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordingInfo: {
-    alignItems: 'center',
-  },
-  recordingStatus: {
+  startButtonText: {
     fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  recordingIndicator: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  waveform: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 40,
-    marginBottom: 10,
-  },
-  waveBar: {
-    width: 3,
-    backgroundColor: '#ff6b6b',
-    marginHorizontal: 1,
-    borderRadius: 1.5,
-  },
-  liveIndicator: {
-    color: '#ff6b6b',
-    fontSize: 12,
     fontWeight: 'bold',
+    color: '#121212',
   },
   promptContainer: {
-    margin: 16,
+    backgroundColor: '#222',
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 20,
-  },
-  promptCard: {
-    padding: 20,
-    borderRadius: 16,
     alignItems: 'center',
-  },
-  promptTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00ffff',
-    marginBottom: 16,
+    width: '100%',
   },
   promptText: {
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 16,
-    fontStyle: 'italic',
-  },
-  promptInstruction: {
-    fontSize: 14,
-    color: '#aaa',
-    textAlign: 'center',
-  },
-  uploadContainer: {
-    margin: 16,
-    marginBottom: 20,
-  },
-  uploadCard: {
-    borderRadius: 16,
-    padding: 20,
-  },
-  uploadContent: {
-    alignItems: 'center',
-  },
-  uploadTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  uploadSubtitle: {
-    fontSize: 14,
-    color: '#aaa',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  progressContainer: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#333',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#00ffff',
-  },
-  progressText: {
-    color: '#00ffff',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  uploadButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  uploadButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  uploadButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  samplesContainer: {
-    margin: 16,
-  },
-  samplesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  samplesTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  samplesCount: {
-    fontSize: 14,
-    color: '#888',
-  },
-  emptyState: {
-    marginBottom: 20,
-  },
-  emptyStateGradient: {
-    padding: 40,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 18,
-    color: '#666',
-    marginTop: 16,
-    fontWeight: '600',
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 8,
+    color: '#00ffff',
     textAlign: 'center',
   },
-  samplesList: {
-    gap: 16,
+  recordingStatus: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  sampleCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
+  recordingText: {
+    fontSize: 16,
+    color: '#fff',
   },
-  sampleGradient: {
-    padding: 16,
+  stopButton: {
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginTop: 10,
   },
-  sampleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  sampleInfo: {
-    flex: 1,
-  },
-  sampleTime: {
+  stopButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  sampleDuration: {
-    fontSize: 14,
-    color: '#aaa',
-    marginBottom: 8,
-  },
-  samplePrompt: {
-    fontSize: 14,
-    color: '#00ffff',
-    fontStyle: 'italic',
-  },
-  deleteButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-  },
-  enhancedAnalysisContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
-  analysisTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#00ffff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  healthScoreContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  scoreCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(0, 255, 255, 0.1)',
-    borderWidth: 3,
-    borderColor: '#00ffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scoreNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#00ffff',
-  },
-  scoreLabel: {
-    fontSize: 12,
-    color: '#aaa',
-    marginTop: 4,
-  },
-  riskIndicator: {
-    alignItems: 'center',
-  },
-  riskLevel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  riskPercentage: {
-    fontSize: 14,
-    color: '#aaa',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  metricItem: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 12,
-    borderRadius: 8,
-    minWidth: 80,
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: '#aaa',
-    marginTop: 4,
-  },
-  insightsContainer: {
-    marginBottom: 16,
-  },
-  insightsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffaa00',
-    marginBottom: 8,
-  },
-  insightText: {
-    fontSize: 14,
-    color: '#ddd',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  tipsContainer: {
-    marginBottom: 8,
-  },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00ff88',
-    marginBottom: 8,
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#ddd',
-    marginBottom: 4,
-    lineHeight: 20,
+    color: '#121212',
   },
   analyzingContainer: {
     alignItems: 'center',
-    padding: 20,
+    marginBottom: 20,
   },
   analyzingText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#00ffff',
-    marginTop: 12,
+    marginTop: 10,
+  },
+  resultsContainer: {
+    backgroundColor: '#222',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 30,
+  },
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00ffff',
+    marginBottom: 10,
+  },
+  resultCard: {
+    backgroundColor: '#333',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  resultLabel: {
+    fontSize: 16,
+    color: '#00ffff',
+    marginBottom: 5,
+  },
+  resultValue: {
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 3,
+  },
+  analysisDetails: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#444',
+  },
+  sessionControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  statsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00ffff',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    elevation: 5,
+  },
+  statsButtonText: {
+    marginLeft: 5,
+    fontSize: 16,
+    color: '#121212',
+  },
+  newSessionButton: {
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    elevation: 5,
+  },
+  newSessionButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#121212',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  analyticsContent: {
+    flex: 1,
+    padding: 20,
+  },
+  analyticsCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  summaryLabel: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#3b82f6',
+  },
+  trendItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  trendLabel: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  trendValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10b981',
+  },
+  achievementItem: {
+    backgroundColor: '#f8fafc',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#fbbf24',
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  achievementDesc: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  achievementDate: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  noAchievements: {
+    fontSize: 16,
+    color: '#64748b',
     textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
+  },
+  insightText: {
+    fontSize: 16,
+    color: '#475569',
+    lineHeight: 24,
+  },
+  
+  // Iterative Results Modal Styles
+  iterativeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iterativeModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  iterativeModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  iterationSummary: {
+    marginBottom: 24,
+  },
+  iterationSummaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 16,
+  },
+  iterationItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  iterationNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6366f1',
+  },
+  iterationScores: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iterationScore: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginRight: 8,
+  },
+  iterationImprovement: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  positive: {
+    color: '#059669',
+    backgroundColor: '#dcfce7',
+  },
+  negative: {
+    color: '#dc2626',
+    backgroundColor: '#fee2e2',
+  },
+  sessionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#3b82f6',
+  },
+  iterativeModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  doneButton: {
+    flex: 1,
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
+  // Analytics Button in Main UI
+  analyticsButtonMain: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  analyticsButtonMainText: {
+    color: '#3b82f6',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Enhanced Iteration Controls
+  iterationControls: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
+  iterationTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4338ca',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  iterationProgress: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iterationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginHorizontal: 4,
+    backgroundColor: '#d1d5db',
+  },
+  iterationDotActive: {
+    backgroundColor: '#6366f1',
+  },
+  iterationDotComplete: {
+    backgroundColor: '#10b981',
+  },
+  iterationInfo: {
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  iterationInfoText: {
+    fontSize: 14,
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  iterationButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  continueButton: {
+    flex: 1,
+    backgroundColor: '#6366f1',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  finishButton: {
+    flex: 1,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  finishButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Biometric Monitoring Styles
+  biometricPanel: {
+    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+    borderRadius: 15,
+    padding: 15,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 136, 0.3)',
+  },
+  biometricTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#00ff88',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  biometricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  biometricItem: {
+    alignItems: 'center',
+  },
+  biometricValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  biometricLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 2,
+  },
+  heartRateChart: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    height: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  heartRateBar: {
+    width: 8,
+    marginHorizontal: 1,
+    borderRadius: 2,
   },
 });
 
