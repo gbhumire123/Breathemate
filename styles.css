@@ -115,16 +115,24 @@ body {
 .toggle-password {
     position: absolute;
     right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     background: none;
     border: none;
     color: #a0aec0;
     cursor: pointer;
-    padding: 4px;
-    z-index: 1;
+    padding: 8px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.3s ease;
 }
 
 .toggle-password:hover {
     color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
 }
 
 /* Form Options */
