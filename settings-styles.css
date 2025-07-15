@@ -871,3 +871,181 @@ input:checked + .slider:before {
     color: #38a169;
     font-weight: bold;
 }
+
+/* Voice Settings (conditional visibility) */
+.voice-settings {
+    margin-left: 20px;
+    border-left: 3px solid #667eea;
+    padding-left: 20px;
+    transition: all 0.3s ease;
+}
+
+.voice-settings.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    border-left-color: #e2e8f0;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    color: #f7fafc;
+}
+
+body.dark-mode .header {
+    background: #2d3748;
+    border-bottom-color: #4a5568;
+}
+
+body.dark-mode .settings-section {
+    background: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .section-header {
+    background: #1a202c;
+    border-bottom-color: #4a5568;
+}
+
+body.dark-mode .setting-item {
+    border-bottom-color: #4a5568;
+}
+
+body.dark-mode .setting-item:hover {
+    background: #1a202c;
+}
+
+body.dark-mode .setting-select,
+body.dark-mode .setting-time,
+body.dark-mode .setting-range {
+    background: #1a202c;
+    border-color: #4a5568;
+    color: #f7fafc;
+}
+
+body.dark-mode .setting-action {
+    border-color: #4a5568;
+    color: #f7fafc;
+    background: #1a202c;
+}
+
+body.dark-mode .setting-action:hover {
+    border-color: #667eea;
+    background: #2d3748;
+}
+
+body.dark-mode .toggle-switch .slider {
+    background-color: #4a5568;
+}
+
+body.dark-mode input:checked + .slider {
+    background-color: #667eea;
+}
+
+/* High Contrast Mode Styles */
+body.high-contrast {
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast .header,
+body.high-contrast .settings-section,
+body.high-contrast .section-header {
+    background: #000000 !important;
+    border-color: #ffffff !important;
+}
+
+body.high-contrast .setting-item {
+    border-bottom-color: #ffffff !important;
+}
+
+body.high-contrast .setting-item:hover {
+    background: #333333 !important;
+}
+
+body.high-contrast .setting-select,
+body.high-contrast .setting-time,
+body.high-contrast .setting-action {
+    background: #000000 !important;
+    border-color: #ffffff !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast .setting-action:hover {
+    background: #333333 !important;
+}
+
+body.high-contrast .toggle-switch .slider {
+    background-color: #333333 !important;
+}
+
+body.high-contrast input:checked + .slider {
+    background-color: #ffffff !important;
+}
+
+body.high-contrast input:checked + .slider:before {
+    background-color: #000000 !important;
+}
+
+/* Font Size Variations */
+body.font-small {
+    font-size: 14px;
+}
+
+body.font-normal {
+    font-size: 16px;
+}
+
+body.font-large {
+    font-size: 18px;
+}
+
+body.font-large h1 { font-size: 36px; }
+body.font-large h2 { font-size: 24px; }
+body.font-large h3 { font-size: 20px; }
+
+body.font-extra-large {
+    font-size: 22px;
+}
+
+body.font-extra-large h1 { font-size: 42px; }
+body.font-extra-large h2 { font-size: 28px; }
+body.font-extra-large h3 { font-size: 24px; }
+
+/* Reduced Motion */
+body.reduce-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* Accessibility Enhancements */
+.screen-reader-only {
+    position: absolute !important;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap;
+}
+
+/* Focus indicators for accessibility */
+body.voice-readout *:focus {
+    outline: 3px solid #667eea !important;
+    outline-offset: 2px !important;
+}
+
+/* Voice settings animation */
+.voice-settings {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.voice-settings.active {
+    opacity: 1;
+    max-height: 200px;
+    margin-top: 16px;
+}

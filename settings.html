@@ -301,6 +301,107 @@
                     </div>
                 </section>
 
+                <!-- Accessibility & Display -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-universal-access"></i>
+                        <h2>Accessibility & Display</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>🌓 Dark Mode</h3>
+                                <p>Switch to a dark theme that's easier on the eyes</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="darkMode">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>🔍 High Contrast Mode</h3>
+                                <p>Increase contrast for better visibility and readability</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="highContrastMode">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>🔊 Voice Readout</h3>
+                                <p>Enable voice narration for visually impaired users</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="voiceReadout">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Voice Settings (shown when Voice Readout is enabled) -->
+                        <div class="setting-item voice-settings" id="voiceSettingsItem" style="display: none;">
+                            <div class="setting-info">
+                                <h3>Voice Speed</h3>
+                                <p>Adjust the speed of voice narration</p>
+                            </div>
+                            <div class="range-container">
+                                <input type="range" class="setting-range" id="voiceSpeed" min="0.5" max="2" step="0.1" value="1">
+                                <span class="range-value">1x</span>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item voice-settings" id="voiceVolumeItem" style="display: none;">
+                            <div class="setting-info">
+                                <h3>Voice Volume</h3>
+                                <p>Adjust the volume of voice narration</p>
+                            </div>
+                            <div class="range-container">
+                                <input type="range" class="setting-range" id="voiceVolume" min="0" max="1" step="0.1" value="0.8">
+                                <span class="range-value">80%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item voice-settings" id="voiceTestItem" style="display: none;">
+                            <div class="setting-info">
+                                <h3>Test Voice</h3>
+                                <p>Test the current voice settings</p>
+                            </div>
+                            <button class="setting-action" onclick="testVoiceReadout()">
+                                <span>Test Voice</span>
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Font Size</h3>
+                                <p>Adjust text size for better readability</p>
+                            </div>
+                            <select class="setting-select" id="fontSize">
+                                <option value="small">Small</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="large">Large</option>
+                                <option value="extra-large">Extra Large</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Reduce Motion</h3>
+                                <p>Minimize animations and transitions for motion sensitivity</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="reduceMotion">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- App Preferences -->
                 <section class="settings-section">
                     <div class="section-header">

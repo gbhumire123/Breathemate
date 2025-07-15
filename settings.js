@@ -55,6 +55,15 @@ function loadUserSettings() {
                 language: 'en',
                 dateFormat: 'mm/dd/yyyy',
                 timeFormat: '12'
+            },
+            accessibility: {
+                darkMode: false,
+                highContrast: false,
+                voiceReadout: false,
+                voiceSpeed: 1.0,
+                voiceVolume: 1.0,
+                fontSize: 'medium',
+                reduceMotion: false
             }
         };
         saveSettings();
@@ -92,6 +101,34 @@ function applySettingsToUI() {
     document.getElementById('language').value = settingsData.preferences.language;
     document.getElementById('dateFormat').value = settingsData.preferences.dateFormat;
     document.getElementById('timeFormat').value = settingsData.preferences.timeFormat;
+    
+    // Accessibility settings
+    if (settingsData.accessibility) {
+        document.getElementById('darkMode').checked = settingsData.accessibility.darkMode || false;
+        document.getElementById('highContrastMode').checked = settingsData.accessibility.highContrast || false;
+        document.getElementById('voiceReadout').checked = settingsData.accessibility.voiceReadout || false;
+        document.getElementById('voiceSpeed').value = settingsData.accessibility.voiceSpeed || 1.0;
+        document.getElementById('voiceVolume').value = settingsData.accessibility.voiceVolume || 0.8;
+        document.getElementById('fontSize').value = settingsData.accessibility.fontSize || 'normal';
+        document.getElementById('reduceMotion').checked = settingsData.accessibility.reduceMotion || false;
+        
+        // Update voice settings UI
+        toggleVoiceSettings(settingsData.accessibility.voiceReadout || false);
+        
+        // Apply accessibility settings immediately
+        if (settingsData.accessibility.darkMode && !settingsData.accessibility.highContrast) {
+            document.body.classList.add('dark-mode');
+        }
+        if (settingsData.accessibility.highContrast) {
+            document.body.classList.add('high-contrast');
+        }
+        if (settingsData.accessibility.fontSize && settingsData.accessibility.fontSize !== 'normal') {
+            document.body.classList.add(`font-${settingsData.accessibility.fontSize}`);
+        }
+        if (settingsData.accessibility.reduceMotion) {
+            document.body.classList.add('reduce-motion');
+        }
+    }
     
     // Initialize daily reminder UI state
     updateDailyReminderUI();
@@ -185,6 +222,64 @@ function setupEventListeners() {
     document.getElementById('timeFormat').addEventListener('change', function() {
         settingsData.preferences.timeFormat = this.value;
         saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    // Accessibility & Display settings
+    document.getElementById('darkMode').addEventListener('change', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.darkMode = this.checked;
+        saveSettings();
+        applyDarkMode(this.checked);
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('highContrastMode').addEventListener('change', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.highContrast = this.checked;
+        saveSettings();
+        applyHighContrast(this.checked);
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('voiceReadout').addEventListener('change', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.voiceReadout = this.checked;
+        saveSettings();
+        toggleVoiceSettings(this.checked);
+        applyVoiceReadout(this.checked);
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('voiceSpeed').addEventListener('input', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.voiceSpeed = parseFloat(this.value);
+        document.querySelector('#voiceSettingsItem .range-value').textContent = this.value + 'x';
+        saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('voiceVolume').addEventListener('input', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.voiceVolume = parseFloat(this.value);
+        document.querySelector('#voiceVolumeItem .range-value').textContent = Math.round(this.value * 100) + '%';
+        saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('fontSize').addEventListener('change', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.fontSize = this.value;
+        saveSettings();
+        applyFontSize(this.value);
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('reduceMotion').addEventListener('change', function() {
+        settingsData.accessibility = settingsData.accessibility || {};
+        settingsData.accessibility.reduceMotion = this.checked;
+        saveSettings();
+        applyReduceMotion(this.checked);
         showSettingChanged(this.closest('.setting-item'));
     });
 }
@@ -1205,79 +1300,322 @@ function updateCaregiverFeatures() {
     }
 }
 
-// Utility functions for profile management
-function getProfileJournalCount(profileId) {
-    const profile = currentUserProfiles.find(p => p.id === profileId);
-    return profile ? (profile.journalEntries?.length || 0) : 0;
-}
+// Accessibility Functions
+let speechSynthesis = window.speechSynthesis;
+let currentUtterance = null;
 
-function getProfileLastActivity(profileId) {
-    const profile = currentUserProfiles.find(p => p.id === profileId);
-    if (!profile || !profile.journalEntries || profile.journalEntries.length === 0) {
-        return 'No activity';
+// Apply dark mode
+function applyDarkMode(enabled) {
+    if (enabled) {
+        document.body.classList.add('dark-mode');
+        showMessage('Dark mode enabled! Easier on the eyes for low-light environments.', 'success');
+    } else {
+        document.body.classList.remove('dark-mode');
+        showMessage('Dark mode disabled.', 'info');
     }
     
-    const lastEntry = profile.journalEntries[0]; // Assuming entries are sorted by date
-    const lastDate = new Date(lastEntry.date);
-    const now = new Date();
-    const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+    // Apply to all pages by storing in localStorage
+    localStorage.setItem('breathemate_dark_mode', enabled);
+}
+
+// Apply high contrast mode
+function applyHighContrast(enabled) {
+    if (enabled) {
+        document.body.classList.add('high-contrast');
+        document.body.classList.remove('dark-mode'); // Remove dark mode if high contrast is enabled
+        showMessage('High contrast mode enabled! Enhanced visibility for better accessibility.', 'success');
+    } else {
+        document.body.classList.remove('high-contrast');
+        // Re-apply dark mode if it was previously enabled
+        if (settingsData.accessibility?.darkMode) {
+            document.body.classList.add('dark-mode');
+        }
+        showMessage('High contrast mode disabled.', 'info');
+    }
     
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays} days ago`;
-    return lastDate.toLocaleDateString();
+    localStorage.setItem('breathemate_high_contrast', enabled);
 }
 
-function capitalizeFirst(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+// Apply voice readout functionality
+function applyVoiceReadout(enabled) {
+    if (enabled) {
+        document.body.classList.add('voice-readout');
+        enableVoiceReadout();
+        showMessage('Voice readout enabled! Navigation and content will be announced.', 'success');
+    } else {
+        document.body.classList.remove('voice-readout');
+        disableVoiceReadout();
+        showMessage('Voice readout disabled.', 'info');
+    }
+    
+    localStorage.setItem('breathemate_voice_readout', enabled);
 }
 
-// Edit user profile (placeholder)
-function editUserProfile(profileId) {
-    const profile = currentUserProfiles.find(p => p.id === profileId);
-    if (profile) {
-        showMessage(`Editing ${profile.name}'s profile...`, 'info');
-        setTimeout(() => {
-            showMessage('Profile editing feature coming soon! You can manage basic info and settings.', 'success');
-        }, 1500);
+// Enable voice readout functionality
+function enableVoiceReadout() {
+    // Add click listeners for voice readout
+    document.addEventListener('click', handleVoiceClick);
+    document.addEventListener('focus', handleVoiceFocus, true);
+    
+    // Announce that voice readout is enabled
+    speak('Voice readout enabled. Click on any element to hear it read aloud.');
+}
+
+// Disable voice readout functionality
+function disableVoiceReadout() {
+    document.removeEventListener('click', handleVoiceClick);
+    document.removeEventListener('focus', handleVoiceFocus, true);
+    
+    // Stop any current speech
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
     }
 }
 
-// Delete user profile
-function deleteUserProfile(profileId) {
-    const profile = currentUserProfiles.find(p => p.id === profileId);
-    if (!profile) return;
+// Handle click events for voice readout
+function handleVoiceClick(event) {
+    if (!settingsData.accessibility?.voiceReadout) return;
     
-    if (profile.isMainAccount) {
-        showMessage('Cannot delete the main account profile.', 'error');
-        return;
+    const element = event.target;
+    const text = getElementText(element);
+    
+    if (text) {
+        speak(text);
     }
+}
+
+// Handle focus events for voice readout
+function handleVoiceFocus(event) {
+    if (!settingsData.accessibility?.voiceReadout) return;
     
-    const confirmDelete = confirm(`Are you sure you want to delete ${profile.name}'s profile? This will permanently delete all their breathing data and cannot be undone.`);
+    const element = event.target;
+    const text = getElementText(element);
     
-    if (confirmDelete) {
-        const finalConfirm = prompt(`Type "${profile.name}" to confirm deletion:`);
+    if (text) {
+        speak(text);
+    }
+}
+
+// Get readable text from an element
+function getElementText(element) {
+    // Priority order for getting text
+    const text = element.getAttribute('aria-label') ||
+                 element.getAttribute('title') ||
+                 element.textContent?.trim() ||
+                 element.getAttribute('placeholder') ||
+                 element.getAttribute('alt') ||
+                 element.tagName.toLowerCase();
+    
+    // Add context for form elements
+    if (element.tagName === 'INPUT') {
+        const type = element.type;
+        const label = element.closest('.setting-item')?.querySelector('.setting-info h3')?.textContent;
         
-        if (finalConfirm === profile.name) {
-            // Remove profile
-            currentUserProfiles = currentUserProfiles.filter(p => p.id !== profileId);
-            saveUserProfiles();
-            
-            // If this was the active profile, switch to main account
-            if (activeProfileId === profileId) {
-                const mainProfile = currentUserProfiles.find(p => p.isMainAccount);
-                if (mainProfile) {
-                    switchToProfile(mainProfile.id);
-                }
-            }
-            
-            showMessage(`${profile.name}'s profile has been deleted.`, 'success');
-            
-            // Refresh the modal
-            closeUserManagement();
-            setTimeout(() => openUserManagement(), 500);
+        if (type === 'checkbox') {
+            const checked = element.checked ? 'enabled' : 'disabled';
+            return `${label || 'Checkbox'} is ${checked}`;
+        } else if (type === 'range') {
+            return `${label || 'Slider'} set to ${element.value}`;
         } else {
-            showMessage('Profile deletion cancelled - name did not match.', 'info');
+            return `${label || 'Input field'}: ${text}`;
+        }
+    }
+    
+    // Add context for buttons
+    if (element.tagName === 'BUTTON') {
+        return `Button: ${text}`;
+    }
+    
+    // Add context for links
+    if (element.tagName === 'A') {
+        return `Link: ${text}`;
+    }
+    
+    // Add context for headings
+    if (element.tagName.match(/^H[1-6]$/)) {
+        return `Heading: ${text}`;
+    }
+    
+    return text;
+}
+
+// Speak text using Web Speech API
+function speak(text) {
+    if (!text || !speechSynthesis) return;
+    
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+    
+    // Create new utterance
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    
+    // Apply voice settings
+    currentUtterance.rate = settingsData.accessibility?.voiceSpeed || 1.0;
+    currentUtterance.volume = settingsData.accessibility?.voiceVolume || 0.8;
+    currentUtterance.pitch = 1.0;
+    
+    // Use a pleasant voice if available
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && 
+        (voice.name.includes('Female') || voice.name.includes('Samantha') || voice.name.includes('Alex'))
+    );
+    
+    if (preferredVoice) {
+        currentUtterance.voice = preferredVoice;
+    }
+    
+    // Speak the text
+    speechSynthesis.speak(currentUtterance);
+}
+
+// Test voice readout function
+function testVoiceReadout() {
+    const testText = `Hello! This is a test of the voice readout feature. 
+                     The current voice speed is ${settingsData.accessibility?.voiceSpeed || 1.0} times normal speed, 
+                     and the volume is ${Math.round((settingsData.accessibility?.voiceVolume || 0.8) * 100)} percent. 
+                     Voice readout will announce page elements as you navigate and interact with them.`;
+    
+    speak(testText);
+    showMessage('Voice test completed! Adjust speed and volume as needed.', 'success');
+}
+
+// Toggle voice settings visibility
+function toggleVoiceSettings(enabled) {
+    const voiceSettings = document.querySelectorAll('.voice-settings');
+    
+    voiceSettings.forEach(setting => {
+        if (enabled) {
+            setting.style.display = 'flex';
+            setting.classList.add('active');
+        } else {
+            setting.style.display = 'none';
+            setting.classList.remove('active');
+        }
+    });
+}
+
+// Apply font size
+function applyFontSize(size) {
+    // Remove existing font size classes
+    document.body.classList.remove('font-small', 'font-normal', 'font-large', 'font-extra-large');
+    
+    // Add new font size class
+    if (size !== 'normal') {
+        document.body.classList.add(`font-${size}`);
+    }
+    
+    localStorage.setItem('breathemate_font_size', size);
+    showMessage(`Font size changed to ${size}.`, 'success');
+}
+
+// Apply reduced motion
+function applyReduceMotion(enabled) {
+    if (enabled) {
+        document.body.classList.add('reduce-motion');
+        showMessage('Reduced motion enabled. Animations and transitions minimized.', 'success');
+    } else {
+        document.body.classList.remove('reduce-motion');
+        showMessage('Reduced motion disabled. Full animations restored.', 'info');
+    }
+    
+    localStorage.setItem('breathemate_reduce_motion', enabled);
+}
+
+// Initialize accessibility settings on page load
+function initializeAccessibilitySettings() {
+    // Apply saved accessibility settings
+    const darkMode = localStorage.getItem('breathemate_dark_mode') === 'true';
+    const highContrast = localStorage.getItem('breathemate_high_contrast') === 'true';
+    const voiceReadout = localStorage.getItem('breathemate_voice_readout') === 'true';
+    const fontSize = localStorage.getItem('breathemate_font_size') || 'normal';
+    const reduceMotion = localStorage.getItem('breathemate_reduce_motion') === 'true';
+    
+    if (highContrast) {
+        document.body.classList.add('high-contrast');
+    } else if (darkMode) {
+        document.body.classList.add('dark-mode');
+    }
+    
+    if (voiceReadout) {
+        document.body.classList.add('voice-readout');
+        // Wait for page to fully load before enabling voice features
+        setTimeout(() => {
+            enableVoiceReadout();
+        }, 1000);
+    }
+    
+    if (fontSize !== 'normal') {
+        document.body.classList.add(`font-${fontSize}`);
+    }
+    
+    if (reduceMotion) {
+        document.body.classList.add('reduce-motion');
+    }
+    
+    // Initialize voice settings UI
+    if (settingsData.accessibility?.voiceReadout) {
+        toggleVoiceSettings(true);
+        
+        // Update voice range displays
+        const voiceSpeedValue = document.querySelector('#voiceSettingsItem .range-value');
+        const voiceVolumeValue = document.querySelector('#voiceVolumeItem .range-value');
+        
+        if (voiceSpeedValue) {
+            voiceSpeedValue.textContent = (settingsData.accessibility.voiceSpeed || 1.0) + 'x';
+        }
+        if (voiceVolumeValue) {
+            voiceVolumeValue.textContent = Math.round((settingsData.accessibility.voiceVolume || 0.8) * 100) + '%';
         }
     }
 }
+
+// Keyboard navigation enhancement for accessibility
+function enhanceKeyboardNavigation() {
+    document.addEventListener('keydown', function(event) {
+        // Skip if not in voice readout mode
+        if (!settingsData.accessibility?.voiceReadout) return;
+        
+        // Announce current focus on Tab navigation
+        if (event.key === 'Tab') {
+            setTimeout(() => {
+                const focused = document.activeElement;
+                const text = getElementText(focused);
+                if (text) {
+                    speak(`Focused on: ${text}`);
+                }
+            }, 100);
+        }
+        
+        // Read page title on Alt+T
+        if (event.altKey && event.key === 't') {
+            event.preventDefault();
+            const title = document.title || 'BreatheMate Settings';
+            speak(`Page title: ${title}`);
+        }
+        
+        // Read main heading on Alt+H
+        if (event.altKey && event.key === 'h') {
+            event.preventDefault();
+            const mainHeading = document.querySelector('h1')?.textContent || 'Settings';
+            speak(`Main heading: ${mainHeading}`);
+        }
+        
+        // Stop speech on Escape
+        if (event.key === 'Escape') {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                speak('Speech stopped');
+            }
+        }
+    });
+}
+
+// Add accessibility features to the initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize accessibility after a short delay to ensure all elements are loaded
+    setTimeout(() => {
+        initializeAccessibilitySettings();
+        enhanceKeyboardNavigation();
+    }, 500);
+});
