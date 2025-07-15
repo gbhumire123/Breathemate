@@ -5,8 +5,14 @@ let playbackTimer = null;
 document.addEventListener('DOMContentLoaded', function() {
     initializeResultsPage();
     loadAnalysisData();
-    drawWaveform();
-    drawTrendChart();
+    
+    // Delay drawing to ensure DOM is fully loaded and canvases are sized
+    setTimeout(() => {
+        setupCanvasElements();
+        drawWaveform();
+        drawTrendChart();
+    }, 200);
+    
     initializeSymptomTracker();
 });
 
@@ -32,6 +38,35 @@ function initializeResultsPage() {
     });
     
     document.getElementById('reportDate').textContent = `${dateString} • ${timeString}`;
+    
+    // Ensure canvas elements are properly sized
+    setTimeout(() => {
+        setupCanvasElements();
+    }, 100);
+}
+
+// Setup canvas elements with proper dimensions
+function setupCanvasElements() {
+    const waveformCanvas = document.getElementById('reportWaveform');
+    const trendCanvas = document.getElementById('trendChart');
+    
+    if (waveformCanvas) {
+        const waveformContainer = waveformCanvas.parentElement;
+        const containerWidth = waveformContainer.offsetWidth;
+        waveformCanvas.width = Math.max(containerWidth - 40, 600);
+        waveformCanvas.height = 120;
+        waveformCanvas.style.width = '100%';
+        waveformCanvas.style.height = '120px';
+    }
+    
+    if (trendCanvas) {
+        const trendContainer = trendCanvas.parentElement;
+        const containerWidth = trendContainer.offsetWidth;
+        trendCanvas.width = Math.max(containerWidth - 40, 500);
+        trendCanvas.height = 200;
+        trendCanvas.style.width = '100%';
+        trendCanvas.style.height = '200px';
+    }
 }
 
 // Load analysis data from localStorage or generate sample data
