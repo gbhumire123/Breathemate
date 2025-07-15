@@ -1691,6 +1691,238 @@ function showMessage(message, type = 'info') {
     }, 5000);
 }
 
+// Draw waveform visualization
+function drawWaveform() {
+    const canvas = document.getElementById('reportWaveform');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Set up canvas
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#667eea';
+    ctx.fillStyle = 'rgba(102, 126, 234, 0.1)';
+    
+    // Generate realistic waveform data
+    const points = [];
+    const segments = 100;
+    const centerY = height / 2;
+    
+    for (let i = 0; i <= segments; i++) {
+        const x = (i / segments) * width;
+        let y = centerY;
+        
+        // Create breathing pattern with noise
+        const breathingFreq = 0.05; // Main breathing rhythm
+        const speechFreq = 0.3; // Speech variations
+        const noiseFreq = 1.0; // Fine detail
+        
+        y += Math.sin(i * breathingFreq) * 40; // Main breathing wave
+        y += Math.sin(i * speechFreq) * 20 * Math.sin(i * 0.1); // Speech modulation
+        y += (Math.random() - 0.5) * 10; // Noise
+        
+        // Add some irregular patterns for realism
+        if (i > 30 && i < 40) {
+            y += Math.sin((i - 30) * 0.5) * 15; // Slight irregularity
+        }
+        if (i > 70 && i < 80) {
+            y += Math.sin((i - 70) * 0.3) * 12; // Another pattern
+        }
+        
+        points.push({ x, y });
+    }
+    
+    // Draw the waveform
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    
+    // Create filled area
+    ctx.lineTo(width, centerY);
+    ctx.lineTo(0, centerY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw the line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+    
+    // Add time markers
+    ctx.fillStyle = '#718096';
+    ctx.font = '12px Inter';
+    ctx.textAlign = 'center';
+    
+    const timeMarkers = ['0s', '5s', '10s', '15s', '20s'];
+    for (let i = 0; i < timeMarkers.length; i++) {
+        const x = (i / (timeMarkers.length - 1)) * width;
+        ctx.fillText(timeMarkers[i], x, height - 5);
+    }
+}
+
+// Draw trend chart
+function drawTrendChart() {
+    const canvas = document.getElementById('trendChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Get journal data for trend
+    const journalEntries = JSON.parse(localStorage.getItem('breathemate_journal') || '[]');
+    const breathAnalysisEntries = journalEntries
+        .filter(entry => entry.type === 'breath_analysis')
+        .slice(0, 7) // Last 7 entries
+        .reverse(); // Chronological order
+    
+    if (breathAnalysisEntries.length < 2) {
+        // Show message for insufficient data
+        ctx.fillStyle = '#718096';
+        ctx.font = '14px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('More data needed for trend analysis', width / 2, height / 2);
+        ctx.fillText('Complete more breathing tests to see your progress', width / 2, height / 2 + 20);
+        return;
+    }
+    
+    // Prepare data
+    const padding = 40;
+    const chartWidth = width - (padding * 2);
+    const chartHeight = height - (padding * 2);
+    const maxRisk = 100;
+    const minRisk = 0;
+    
+    // Draw grid
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    
+    // Horizontal grid lines
+    for (let i = 0; i <= 5; i++) {
+        const y = padding + (i / 5) * chartHeight;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(padding + chartWidth, y);
+        ctx.stroke();
+        
+        // Y-axis labels
+        ctx.fillStyle = '#718096';
+        ctx.font = '12px Inter';
+        ctx.textAlign = 'right';
+        const value = maxRisk - (i / 5) * (maxRisk - minRisk);
+        ctx.fillText(`${Math.round(value)}%`, padding - 10, y + 4);
+    }
+    
+    // Vertical grid lines
+    const stepX = chartWidth / (breathAnalysisEntries.length - 1);
+    for (let i = 0; i < breathAnalysisEntries.length; i++) {
+        const x = padding + i * stepX;
+        ctx.beginPath();
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, padding + chartHeight);
+        ctx.stroke();
+        
+        // X-axis labels
+        ctx.fillStyle = '#718096';
+        ctx.font = '12px Inter';
+        ctx.textAlign = 'center';
+        const date = new Date(breathAnalysisEntries[i].date);
+        const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        ctx.fillText(label, x, height - 10);
+    }
+    
+    // Draw trend line
+    const points = breathAnalysisEntries.map((entry, index) => {
+        const x = padding + index * stepX;
+        const riskValue = parseInt(entry.riskLevel.replace('%', '')) || 0;
+        const y = padding + chartHeight - ((riskValue - minRisk) / (maxRisk - minRisk)) * chartHeight;
+        return { x, y, risk: riskValue };
+    });
+    
+    // Fill area under curve
+    ctx.fillStyle = 'rgba(102, 126, 234, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, padding + chartHeight);
+    for (let i = 0; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.lineTo(points[points.length - 1].x, padding + chartHeight);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw trend line
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+    
+    // Draw data points
+    points.forEach((point, index) => {
+        ctx.fillStyle = '#667eea';
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Highlight current point
+        if (index === points.length - 1) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    });
+    
+    // Calculate and show trend
+    const firstRisk = points[0].risk;
+    const lastRisk = points[points.length - 1].risk;
+    const trendChange = lastRisk - firstRisk;
+    
+    // Update trend indicators in UI
+    const trendElements = document.querySelectorAll('.stat-change');
+    if (trendElements.length > 0) {
+        const weekTrend = trendElements[0];
+        if (weekTrend) {
+            const weekChange = Math.abs(trendChange);
+            weekTrend.className = `stat-change ${trendChange <= 0 ? 'positive' : 'negative'}`;
+            weekTrend.innerHTML = `
+                <i class="fas fa-arrow-${trendChange <= 0 ? 'down' : 'up'}"></i>
+                <span>${trendChange <= 0 ? '-' : '+'}${weekChange}%</span>
+            `;
+        }
+        
+        // Update month trend (simulated)
+        if (trendElements[1]) {
+            const monthTrend = trendElements[1];
+            const monthChange = Math.floor(Math.random() * 10) + 1;
+            const monthDirection = Math.random() > 0.6 ? 'positive' : 'negative';
+            monthTrend.className = `stat-change ${monthDirection}`;
+            monthTrend.innerHTML = `
+                <i class="fas fa-arrow-${monthDirection === 'positive' ? 'down' : 'up'}"></i>
+                <span>${monthDirection === 'positive' ? '-' : '+'}${monthChange}%</span>
+            `;
+        }
+    }
+}
+
 // Emergency advice functionality for high-risk cases
 function showEmergencyAdvice() {
     const emergencyAdviceHTML = `
