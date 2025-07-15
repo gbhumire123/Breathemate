@@ -269,6 +269,63 @@
         </div>
     </div>
 
+    <!-- AI Feedback Chat Window -->
+    <div class="ai-chat-widget" id="aiChatWidget">
+        <div class="ai-chat-toggle" onclick="toggleAIChat()">
+            <div class="ai-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="ai-notification-dot" id="aiNotificationDot"></div>
+        </div>
+        
+        <div class="ai-chat-window" id="aiChatWindow">
+            <div class="ai-chat-header">
+                <div class="ai-chat-title">
+                    <div class="ai-avatar-small">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="ai-info">
+                        <h4>AI Health Assistant</h4>
+                        <span class="ai-status">Online</span>
+                    </div>
+                </div>
+                <button class="ai-chat-close" onclick="closeAIChat()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="ai-chat-messages" id="aiChatMessages">
+                <!-- Messages will be populated by JavaScript -->
+            </div>
+            
+            <div class="ai-chat-input">
+                <div class="ai-quick-actions">
+                    <button class="quick-action-btn" onclick="sendQuickMessage('breathing tips')">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips
+                    </button>
+                    <button class="quick-action-btn" onclick="sendQuickMessage('analyze symptoms')">
+                        <i class="fas fa-stethoscope"></i>
+                        Symptoms
+                    </button>
+                    <button class="quick-action-btn" onclick="sendQuickMessage('breathing exercise')">
+                        <i class="fas fa-leaf"></i>
+                        Exercise
+                    </button>
+                </div>
+                <div class="ai-input-container">
+                    <input type="text" 
+                           id="aiChatInput" 
+                           placeholder="Ask me about your breathing health..." 
+                           onkeypress="handleAIChatKeyPress(event)">
+                    <button class="ai-send-btn" onclick="sendAIMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Overlay -->
     <div class="overlay" id="overlay" onclick="closeAllDropdowns()"></div>
 

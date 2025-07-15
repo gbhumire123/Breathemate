@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStatusCards();
     initializeDailyReminderSystem();
     initializeMultiProfileDashboard();
+    initializeAIChat(); // Add AI chat initialization
 });
 
 // Initialize dashboard
@@ -580,6 +581,300 @@ window.addEventListener('load', function() {
         }, 300);
     }
 });
+
+// AI Chat functionality
+let aiChatOpen = false;
+let aiChatMessages = [];
+let isAITyping = false;
+
+// Initialize AI chat system
+function initializeAIChat() {
+    // Load previous messages
+    const savedMessages = localStorage.getItem('breathemate_ai_messages');
+    if (savedMessages) {
+        aiChatMessages = JSON.parse(savedMessages);
+        displayAIMessages();
+    } else {
+        // Send initial greeting
+        setTimeout(() => {
+            sendInitialAIGreeting();
+        }, 2000);
+    }
+    
+    // Check if should show notification dot
+    checkAINotifications();
+}
+
+// Send initial AI greeting based on user data
+function sendInitialAIGreeting() {
+    const riskLevel = localStorage.getItem('breathemate_risk_level') || 'No scan yet';
+    const lastScan = localStorage.getItem('breathemate_last_scan');
+    
+    let greeting = "Hi! I'm your AI health assistant. 👋";
+    let followUp = "";
+    
+    if (riskLevel === 'No scan yet') {
+        followUp = "I noticed you haven't taken a breathing test yet. Would you like me to guide you through your first test?";
+    } else if (riskLevel.includes('Medium') || riskLevel.includes('High')) {
+        greeting = "Hi! I noticed your breath seems irregular today. Want me to help understand why? 🫁";
+        followUp = "I can suggest some breathing exercises and tips to help improve your respiratory health.";
+    } else {
+        followUp = "Your breathing patterns look good! I'm here if you need any health tips or have questions.";
+    }
+    
+    addAIMessage(greeting);
+    if (followUp) {
+        setTimeout(() => {
+            addAIMessage(followUp);
+        }, 1500);
+    }
+    
+    // Show notification dot
+    showAINotification();
+}
+
+// Toggle AI chat window
+function toggleAIChat() {
+    const chatWindow = document.getElementById('aiChatWindow');
+    const notificationDot = document.getElementById('aiNotificationDot');
+    
+    if (aiChatOpen) {
+        closeAIChat();
+    } else {
+        aiChatOpen = true;
+        chatWindow.classList.add('active');
+        notificationDot.classList.remove('active');
+        
+        // Focus on input
+        setTimeout(() => {
+            document.getElementById('aiChatInput').focus();
+        }, 300);
+    }
+}
+
+// Close AI chat
+function closeAIChat() {
+    const chatWindow = document.getElementById('aiChatWindow');
+    aiChatOpen = false;
+    chatWindow.classList.remove('active');
+}
+
+// Add AI message to chat
+function addAIMessage(message, isUser = false) {
+    const messageObj = {
+        text: message,
+        isUser: isUser,
+        timestamp: new Date().toISOString()
+    };
+    
+    aiChatMessages.push(messageObj);
+    saveAIMessages();
+    displayAIMessages();
+    
+    // Scroll to bottom
+    setTimeout(() => {
+        const messagesContainer = document.getElementById('aiChatMessages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 100);
+}
+
+// Display AI messages in chat
+function displayAIMessages() {
+    const messagesContainer = document.getElementById('aiChatMessages');
+    messagesContainer.innerHTML = '';
+    
+    aiChatMessages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `ai-message ${msg.isUser ? 'user' : 'ai'}`;
+        
+        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        messageDiv.innerHTML = `
+            ${msg.text}
+            <div class="ai-message-time">${time}</div>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+    });
+}
+
+// Show typing indicator
+function showAITyping() {
+    const messagesContainer = document.getElementById('aiChatMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'ai-message-typing';
+    typingDiv.id = 'ai-typing-indicator';
+    
+    typingDiv.innerHTML = `
+        <span>AI is typing</span>
+        <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    isAITyping = true;
+}
+
+// Remove typing indicator
+function hideAITyping() {
+    const typingIndicator = document.getElementById('ai-typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    isAITyping = false;
+}
+
+// Send user message
+function sendAIMessage() {
+    const input = document.getElementById('aiChatInput');
+    const message = input.value.trim();
+    
+    if (!message || isAITyping) return;
+    
+    // Add user message
+    addAIMessage(message, true);
+    input.value = '';
+    
+    // Process AI response
+    processAIResponse(message);
+}
+
+// Send quick message
+function sendQuickMessage(type) {
+    let message = '';
+    
+    switch (type) {
+        case 'breathing tips':
+            message = 'Can you give me some breathing tips?';
+            break;
+        case 'analyze symptoms':
+            message = 'Help me understand my symptoms';
+            break;
+        case 'breathing exercise':
+            message = 'Guide me through a breathing exercise';
+            break;
+    }
+    
+    if (message) {
+        document.getElementById('aiChatInput').value = message;
+        sendAIMessage();
+    }
+}
+
+// Process AI response based on user input
+function processAIResponse(userMessage) {
+    showAITyping();
+    
+    // Simulate AI processing delay
+    setTimeout(() => {
+        const response = generateAIResponse(userMessage);
+        hideAITyping();
+        addAIMessage(response);
+    }, 1000 + Math.random() * 2000);
+}
+
+// Generate AI response based on keywords and context
+function generateAIResponse(userMessage) {
+    const message = userMessage.toLowerCase();
+    const riskLevel = localStorage.getItem('breathemate_risk_level') || 'No scan yet';
+    const journalEntries = JSON.parse(localStorage.getItem('breathemate_journal') || '[]');
+    
+    // Breathing tips
+    if (message.includes('tip') || message.includes('advice') || message.includes('help')) {
+        const tips = [
+            "💧 Drink warm water - it helps soothe your airways and can reduce throat irritation.",
+            "🌿 Avoid allergens like dust, pollen, and strong scents that might trigger breathing issues.",
+            "🧘‍♀️ Try the 4-7-8 breathing technique: Inhale for 4, hold for 7, exhale for 8 seconds.",
+            "🚶‍♀️ Take gentle walks in fresh air to strengthen your respiratory muscles.",
+            "🍯 A teaspoon of honey can help soothe throat irritation and reduce coughing.",
+            "💨 Practice diaphragmatic breathing - place one hand on chest, one on belly, focus on belly rising."
+        ];
+        return tips[Math.floor(Math.random() * tips.length)];
+    }
+    
+    // Symptom analysis
+    if (message.includes('symptom') || message.includes('irregular') || message.includes('analyze')) {
+        if (riskLevel.includes('High')) {
+            return "Based on your recent analysis showing high risk, I recommend consulting a healthcare provider soon. In the meantime: avoid triggers, stay hydrated, and practice gentle breathing exercises.";
+        } else if (riskLevel.includes('Medium')) {
+            return "Your breathing shows some irregularities. Common causes include stress, allergies, or environmental factors. Try drinking warm water and avoiding allergens.";
+        } else {
+            return "Your breathing patterns look healthy! Keep monitoring regularly and maintain good respiratory hygiene.";
+        }
+    }
+    
+    // Breathing exercises
+    if (message.includes('exercise') || message.includes('breathing') || message.includes('guide')) {
+        return "Let's try a simple breathing exercise! 🧘‍♀️\n\n1. Sit comfortably and relax your shoulders\n2. Breathe in slowly through your nose for 4 counts\n3. Hold your breath for 7 counts\n4. Exhale slowly through your mouth for 8 counts\n5. Repeat 4-6 times\n\nThis can help reduce stress and improve lung function!";
+    }
+    
+    // Emergency or concerning symptoms
+    if (message.includes('emergency') || message.includes('urgent') || message.includes('severe') || message.includes('chest pain')) {
+        return "⚠️ If you're experiencing severe breathing difficulties, chest pain, or other emergency symptoms, please call 911 immediately. For non-emergency concerns, contact your healthcare provider.";
+    }
+    
+    // Test reminders
+    if (message.includes('test') || message.includes('record') || message.includes('scan')) {
+        return "Regular breathing tests help track your respiratory health! I recommend testing daily if possible. Would you like me to remind you to take tests?";
+    }
+    
+    // General health inquiry
+    if (message.includes('how') && (message.includes('health') || message.includes('doing'))) {
+        const entries = journalEntries.length;
+        if (entries > 0) {
+            return `You've been doing great with ${entries} journal entries! Your commitment to tracking your breathing health is excellent. Keep up the good work! 🌟`;
+        } else {
+            return "I'd love to help you track your health better! Consider starting with a breathing test and keeping a symptom journal.";
+        }
+    }
+    
+    // Default responses
+    const defaultResponses = [
+        "I'm here to help with your breathing health! Ask me about symptoms, breathing exercises, or health tips.",
+        "That's interesting! Can you tell me more about how you're feeling today?",
+        "I can help with breathing tips, symptom analysis, or guide you through exercises. What would be most helpful?",
+        "Your respiratory health is important! Feel free to ask me anything about breathing patterns, symptoms, or wellness tips."
+    ];
+    
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+}
+
+// Handle enter key in chat input
+function handleAIChatKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendAIMessage();
+    }
+}
+
+// Save AI messages to localStorage
+function saveAIMessages() {
+    localStorage.setItem('breathemate_ai_messages', JSON.stringify(aiChatMessages));
+}
+
+// Show AI notification dot
+function showAINotification() {
+    const notificationDot = document.getElementById('aiNotificationDot');
+    notificationDot.classList.add('active');
+}
+
+// Check if should show AI notifications
+function checkAINotifications() {
+    const lastAIInteraction = localStorage.getItem('breathemate_last_ai_interaction');
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    if (!lastAIInteraction || new Date(lastAIInteraction) < twentyFourHoursAgo) {
+        showAINotification();
+    }
+}
+
+// Update last AI interaction time
+function updateAIInteraction() {
+    localStorage.setItem('breathemate_last_ai_interaction', new Date().toISOString());
+}
 
 // Utility functions
 function formatDate(dateString) {
