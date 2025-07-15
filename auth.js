@@ -5,9 +5,9 @@
 
 class BreatheMateAuth {
     constructor() {
+        // Remove Google provider initialization
         this.auth = window.firebaseAuth;
         this.db = window.firebaseDb;
-        this.googleProvider = window.googleProvider;
         this.currentUser = null;
         this.isGuest = false;
         
@@ -56,10 +56,10 @@ class BreatheMateAuth {
             forgotPasswordForm.addEventListener('submit', (e) => this.handlePasswordReset(e));
         }
 
-        // Google Sign-In buttons - both login and signup
+        // Google Sign-In buttons - show "Coming Soon" message
         const googleBtns = document.querySelectorAll('.google-btn, #googleSignInBtn, #googleSignUpBtn');
         googleBtns.forEach(btn => {
-            btn.addEventListener('click', () => this.signInWithGoogle());
+            btn.addEventListener('click', () => this.showGoogleComingSoon());
         });
 
         // Guest buttons
@@ -208,33 +208,9 @@ class BreatheMateAuth {
         }
     }
 
-    // Handle Google Sign-In
-    async signInWithGoogle() {
-        this.showLoading('Connecting with Google...');
-
-        try {
-            const result = await this.auth.signInWithPopup(this.googleProvider);
-            const user = result.user;
-            
-            // Check if this is a new user
-            const isNewUser = result.additionalUserInfo?.isNewUser;
-            
-            if (isNewUser) {
-                // Create user document for new Google users
-                await this.createUserDocument(user, {
-                    name: user.displayName,
-                    email: user.email,
-                    photoURL: user.photoURL,
-                    provider: 'google'
-                });
-            }
-
-            this.showMessage('✅ Google Sign-In successful! Redirecting...', 'success');
-            
-        } catch (error) {
-            this.hideLoading();
-            this.handleAuthError(error);
-        }
+    // Show "Coming Soon" message for Google login
+    showGoogleComingSoon() {
+        this.showMessage('🚀 Google Sign-In coming soon! For now, please use email/password login or continue as guest.', 'info');
     }
 
     // Continue as guest
@@ -681,244 +657,19 @@ class SimplifiedAuth {
         guestBtns.forEach(btn => {
             btn.addEventListener('click', () => this.guestLogin());
         });
+
+        // Google Sign-In buttons - show "Coming Soon" message
+        const googleBtns = document.querySelectorAll('.google-btn, #googleSignInBtn, #googleSignUpBtn');
+        googleBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.showGoogleComingSoon());
+        });
     }
 
-    async handleSimpleLogin(event) {
-        event.preventDefault();
-        
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const rememberMe = document.getElementById('rememberMe').checked;
+    // ...existing code...
 
-        if (!email || !password) {
-            this.showMessage('Please enter email and password.', 'error');
-            return;
-        }
-
-        this.showLoading('Signing you in...');
-
-        // Simulate network delay
-        setTimeout(() => {
-            const user = this.users[email];
-            
-            if (!user || user.password !== password) {
-                this.hideLoading();
-                this.showMessage('Invalid email or password.', 'error');
-                return;
-            }
-
-            // Successful login
-            this.loginUser(user, rememberMe);
-        }, 1000);
-    }
-
-    async handleSimpleSignup(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('signupName').value.trim();
-        const email = document.getElementById('signupEmail').value.trim();
-        const password = document.getElementById('signupPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const agreeTerms = document.getElementById('agreeTerms').checked;
-
-        // Validation
-        if (!name || !email || !password || !confirmPassword) {
-            this.showMessage('Please fill in all fields.', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            this.showMessage('Passwords do not match.', 'error');
-            return;
-        }
-
-        if (password.length < 6) {
-            this.showMessage('Password must be at least 6 characters.', 'error');
-            return;
-        }
-
-        if (!agreeTerms) {
-            this.showMessage('Please accept the terms and conditions.', 'error');
-            return;
-        }
-
-        if (this.users[email]) {
-            this.showMessage('An account with this email already exists.', 'error');
-            return;
-        }
-
-        this.showLoading('Creating your account...');
-
-        // Create new user
-        setTimeout(() => {
-            const newUser = {
-                email: email,
-                password: password,
-                name: name,
-                verified: true,
-                createdAt: new Date().toISOString()
-            };
-
-            this.users[email] = newUser;
-            this.saveUsers();
-
-            this.showMessage('Account created successfully!', 'success');
-            
-            // Auto-login the new user
-            setTimeout(() => {
-                this.loginUser(newUser, false);
-            }, 1500);
-        }, 1000);
-    }
-
-    quickDemoLogin() {
-        // Auto-fill demo credentials
-        document.getElementById('email').value = 'demo@breathemate.com';
-        document.getElementById('password').value = 'Demo123!';
-        document.getElementById('rememberMe').checked = true;
-        
-        this.showMessage('Demo credentials loaded! Logging in...', 'info');
-        
-        // Auto-submit
-        setTimeout(() => {
-            this.loginUser(this.users['demo@breathemate.com'], true);
-        }, 1000);
-    }
-
-    guestLogin() {
-        this.showLoading('Setting up guest access...');
-        
-        const guestUser = {
-            email: 'guest@breathemate.local',
-            name: 'Guest User',
-            isGuest: true,
-            verified: true
-        };
-        
-        setTimeout(() => {
-            this.loginUser(guestUser, false);
-        }, 1000);
-    }
-
-    loginUser(user, rememberMe) {
-        // Store user data
-        const storage = rememberMe ? localStorage : sessionStorage;
-        
-        storage.setItem('breathemate_email', user.email);
-        storage.setItem('breathemate_username', user.name);
-        storage.setItem('breathemate_email_verified', user.verified.toString());
-        storage.setItem('breathemate_logged_in', 'true');
-        
-        if (user.isGuest) {
-            storage.setItem('breathemate_guest_mode', 'true');
-            storage.setItem('breathemate_guest_id', 'guest_' + Date.now());
-        }
-
-        this.hideLoading();
-        this.showMessage(`Welcome back, ${user.name}!`, 'success');
-        
-        // Redirect to dashboard
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1500);
-    }
-
-    // UI Helper Methods
-    showLoading(text = 'Loading...') {
-        const overlay = document.getElementById('loadingOverlay');
-        const loadingText = document.getElementById('loadingText');
-        
-        if (overlay && loadingText) {
-            loadingText.textContent = text;
-            overlay.style.display = 'flex';
-        }
-    }
-
-    hideLoading() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    }
-
-    showMessage(message, type = 'info') {
-        // Remove existing messages
-        const existingMessage = document.querySelector('.auth-message');
-        if (existingMessage) {
-            existingMessage.remove();
-        }
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `auth-message ${type}`;
-        messageDiv.textContent = message;
-        
-        const styles = {
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            color: 'white',
-            fontWeight: '500',
-            fontSize: '14px',
-            zIndex: '10000',
-            opacity: '0',
-            transform: 'translateY(-20px)',
-            transition: 'all 0.3s ease',
-            maxWidth: '400px'
-        };
-        
-        switch (type) {
-            case 'success':
-                styles.background = '#38a169';
-                break;
-            case 'error':
-                styles.background = '#e53e3e';
-                break;
-            case 'warning':
-                styles.background = '#d69e2e';
-                break;
-            case 'info':
-            default:
-                styles.background = '#3182ce';
-                break;
-        }
-        
-        Object.assign(messageDiv.style, styles);
-        document.body.appendChild(messageDiv);
-        
-        // Animate in
-        setTimeout(() => {
-            messageDiv.style.opacity = '1';
-            messageDiv.style.transform = 'translateY(0)';
-        }, 100);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (messageDiv.parentNode) {
-                messageDiv.style.opacity = '0';
-                messageDiv.style.transform = 'translateY(-20px)';
-                setTimeout(() => messageDiv.remove(), 300);
-            }
-        }, 5000);
-    }
-
-    // Sign out method
-    signOut() {
-        localStorage.removeItem('breathemate_email');
-        localStorage.removeItem('breathemate_username');
-        localStorage.removeItem('breathemate_email_verified');
-        localStorage.removeItem('breathemate_logged_in');
-        localStorage.removeItem('breathemate_guest_mode');
-        localStorage.removeItem('breathemate_guest_id');
-        
-        sessionStorage.clear();
-        
-        this.showMessage('Successfully signed out.', 'success');
-        
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
+    // Show "Coming Soon" message for Google login
+    showGoogleComingSoon() {
+        this.showMessage('🚀 Google Sign-In coming soon! For now, please use email/password login or continue as guest.', 'info');
     }
 }
 
