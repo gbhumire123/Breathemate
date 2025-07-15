@@ -1,6 +1,6 @@
 /**
- * BreatheMate Firebase Authentication System
- * Handles login, signup, password reset, Google Sign-In, and guest mode
+ * BreatheMate Authentication System
+ * Combines Firebase and Simplified local authentication methods
  */
 
 class BreatheMateAuth {
@@ -624,6 +624,304 @@ class BreatheMateAuth {
     }
 }
 
+// Simple fallback authentication for when Firebase is unavailable
+class SimplifiedAuth {
+    constructor() {
+        this.users = this.loadUsers();
+        this.setupEventListeners();
+    }
+
+    loadUsers() {
+        // Default demo users for testing
+        const defaultUsers = {
+            'demo@breathemate.com': {
+                email: 'demo@breathemate.com',
+                password: 'Demo123!',
+                name: 'Demo User',
+                verified: true
+            },
+            'test@example.com': {
+                email: 'test@example.com',
+                password: 'Test123!',
+                name: 'Test User',
+                verified: true
+            }
+        };
+
+        // Load any additional users from localStorage
+        const savedUsers = JSON.parse(localStorage.getItem('breathemate_local_users') || '{}');
+        return { ...defaultUsers, ...savedUsers };
+    }
+
+    saveUsers() {
+        localStorage.setItem('breathemate_local_users', JSON.stringify(this.users));
+    }
+
+    setupEventListeners() {
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleSimpleLogin(e));
+        }
+
+        // Signup form
+        const signupForm = document.getElementById('signupForm');
+        if (signupForm) {
+            signupForm.addEventListener('submit', (e) => this.handleSimpleSignup(e));
+        }
+
+        // Quick demo login
+        const quickLoginBtn = document.querySelector('.quick-login-btn');
+        if (quickLoginBtn) {
+            quickLoginBtn.addEventListener('click', () => this.quickDemoLogin());
+        }
+
+        // Guest login
+        const guestBtns = document.querySelectorAll('.guest-btn');
+        guestBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.guestLogin());
+        });
+    }
+
+    async handleSimpleLogin(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        if (!email || !password) {
+            this.showMessage('Please enter email and password.', 'error');
+            return;
+        }
+
+        this.showLoading('Signing you in...');
+
+        // Simulate network delay
+        setTimeout(() => {
+            const user = this.users[email];
+            
+            if (!user || user.password !== password) {
+                this.hideLoading();
+                this.showMessage('Invalid email or password.', 'error');
+                return;
+            }
+
+            // Successful login
+            this.loginUser(user, rememberMe);
+        }, 1000);
+    }
+
+    async handleSimpleSignup(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const agreeTerms = document.getElementById('agreeTerms').checked;
+
+        // Validation
+        if (!name || !email || !password || !confirmPassword) {
+            this.showMessage('Please fill in all fields.', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.showMessage('Passwords do not match.', 'error');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showMessage('Password must be at least 6 characters.', 'error');
+            return;
+        }
+
+        if (!agreeTerms) {
+            this.showMessage('Please accept the terms and conditions.', 'error');
+            return;
+        }
+
+        if (this.users[email]) {
+            this.showMessage('An account with this email already exists.', 'error');
+            return;
+        }
+
+        this.showLoading('Creating your account...');
+
+        // Create new user
+        setTimeout(() => {
+            const newUser = {
+                email: email,
+                password: password,
+                name: name,
+                verified: true,
+                createdAt: new Date().toISOString()
+            };
+
+            this.users[email] = newUser;
+            this.saveUsers();
+
+            this.showMessage('Account created successfully!', 'success');
+            
+            // Auto-login the new user
+            setTimeout(() => {
+                this.loginUser(newUser, false);
+            }, 1500);
+        }, 1000);
+    }
+
+    quickDemoLogin() {
+        // Auto-fill demo credentials
+        document.getElementById('email').value = 'demo@breathemate.com';
+        document.getElementById('password').value = 'Demo123!';
+        document.getElementById('rememberMe').checked = true;
+        
+        this.showMessage('Demo credentials loaded! Logging in...', 'info');
+        
+        // Auto-submit
+        setTimeout(() => {
+            this.loginUser(this.users['demo@breathemate.com'], true);
+        }, 1000);
+    }
+
+    guestLogin() {
+        this.showLoading('Setting up guest access...');
+        
+        const guestUser = {
+            email: 'guest@breathemate.local',
+            name: 'Guest User',
+            isGuest: true,
+            verified: true
+        };
+        
+        setTimeout(() => {
+            this.loginUser(guestUser, false);
+        }, 1000);
+    }
+
+    loginUser(user, rememberMe) {
+        // Store user data
+        const storage = rememberMe ? localStorage : sessionStorage;
+        
+        storage.setItem('breathemate_email', user.email);
+        storage.setItem('breathemate_username', user.name);
+        storage.setItem('breathemate_email_verified', user.verified.toString());
+        storage.setItem('breathemate_logged_in', 'true');
+        
+        if (user.isGuest) {
+            storage.setItem('breathemate_guest_mode', 'true');
+            storage.setItem('breathemate_guest_id', 'guest_' + Date.now());
+        }
+
+        this.hideLoading();
+        this.showMessage(`Welcome back, ${user.name}!`, 'success');
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1500);
+    }
+
+    // UI Helper Methods
+    showLoading(text = 'Loading...') {
+        const overlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        
+        if (overlay && loadingText) {
+            loadingText.textContent = text;
+            overlay.style.display = 'flex';
+        }
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    showMessage(message, type = 'info') {
+        // Remove existing messages
+        const existingMessage = document.querySelector('.auth-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `auth-message ${type}`;
+        messageDiv.textContent = message;
+        
+        const styles = {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            color: 'white',
+            fontWeight: '500',
+            fontSize: '14px',
+            zIndex: '10000',
+            opacity: '0',
+            transform: 'translateY(-20px)',
+            transition: 'all 0.3s ease',
+            maxWidth: '400px'
+        };
+        
+        switch (type) {
+            case 'success':
+                styles.background = '#38a169';
+                break;
+            case 'error':
+                styles.background = '#e53e3e';
+                break;
+            case 'warning':
+                styles.background = '#d69e2e';
+                break;
+            case 'info':
+            default:
+                styles.background = '#3182ce';
+                break;
+        }
+        
+        Object.assign(messageDiv.style, styles);
+        document.body.appendChild(messageDiv);
+        
+        // Animate in
+        setTimeout(() => {
+            messageDiv.style.opacity = '1';
+            messageDiv.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.style.opacity = '0';
+                messageDiv.style.transform = 'translateY(-20px)';
+                setTimeout(() => messageDiv.remove(), 300);
+            }
+        }, 5000);
+    }
+
+    // Sign out method
+    signOut() {
+        localStorage.removeItem('breathemate_email');
+        localStorage.removeItem('breathemate_username');
+        localStorage.removeItem('breathemate_email_verified');
+        localStorage.removeItem('breathemate_logged_in');
+        localStorage.removeItem('breathemate_guest_mode');
+        localStorage.removeItem('breathemate_guest_id');
+        
+        sessionStorage.clear();
+        
+        this.showMessage('Successfully signed out.', 'success');
+        
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1000);
+    }
+}
+
 // Form switching functions
 function showLogin() {
     document.getElementById('loginForm').style.display = 'block';
@@ -741,16 +1039,32 @@ function showPrivacy() {
 
 // Initialize authentication when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Wait for Firebase to initialize
+    // Try Firebase first, then fallback to simplified auth
     setTimeout(() => {
-        window.breatheMateAuth = new BreatheMateAuth();
-        console.log('🔐 BreatheMate Authentication System Initialized');
+        try {
+            // Check if Firebase is available
+            if (window.firebase && window.firebaseAuth) {
+                window.breatheMateAuth = new BreatheMateAuth();
+                console.log('🔐 BreatheMate Firebase Authentication Initialized');
+            } else {
+                throw new Error('Firebase not available');
+            }
+        } catch (error) {
+            console.log('🔐 Firebase unavailable, using simplified authentication');
+            window.breatheMateAuth = new SimplifiedAuth();
+            console.log('🔐 BreatheMate Simplified Authentication Initialized');
+        }
     }, 1000);
 });
 
 // Global sign out function for other pages
 window.signOut = function() {
-    if (window.breatheMateAuth) {
+    if (window.breatheMateAuth && typeof window.breatheMateAuth.signOut === 'function') {
         window.breatheMateAuth.signOut();
+    } else {
+        // Fallback sign out
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'index.html';
     }
 };
