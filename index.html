@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -19,6 +24,7 @@
                 <p class="tagline">Monitor Your Lung Health</p>
             </div>
             
+            <!-- Login Form -->
             <form class="login-form" id="loginForm">
                 <div class="form-group">
                     <label for="email">Email Address</label>
@@ -45,16 +51,16 @@
                         <span class="checkmark"></span>
                         Remember me
                     </label>
-                    <a href="#" class="forgot-password">Forgot Password?</a>
+                    <a href="#" class="forgot-password" onclick="showForgotPassword()">Forgot Password?</a>
                 </div>
                 
-                <!-- Quick Login Button -->
+                <!-- Quick Demo Login Button -->
                 <button type="button" class="quick-login-btn" onclick="quickLogin()">
                     <i class="fas fa-bolt"></i>
                     Quick Demo Login
                 </button>
                 
-                <button type="submit" class="login-btn">
+                <button type="submit" class="login-btn" id="loginBtn">
                     <span>Sign In</span>
                     <i class="fas fa-arrow-right"></i>
                 </button>
@@ -63,13 +69,108 @@
                     <span>or</span>
                 </div>
                 
-                <button type="button" class="google-btn">
+                <button type="button" class="google-btn" id="googleSignInBtn">
                     <i class="fab fa-google"></i>
                     Continue with Google
                 </button>
                 
+                <button type="button" class="guest-btn" onclick="continueAsGuest()">
+                    <i class="fas fa-user-clock"></i>
+                    Continue as Guest
+                </button>
+                
                 <p class="signup-link">
                     Don't have an account? <a href="#" onclick="showSignup()">Sign up</a>
+                </p>
+            </form>
+            
+            <!-- Sign Up Form (Hidden by default) -->
+            <form class="signup-form" id="signupForm" style="display: none;">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="signupName" name="name" placeholder="Enter your full name" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="signupEmail" name="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="signupPassword" name="password" placeholder="Create a password" required>
+                        <button type="button" class="toggle-password" onclick="togglePasswordSignup()">
+                            <i class="fas fa-eye" id="toggleIconSignup"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                </div>
+                
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="#" onclick="showTerms()">Terms of Service</a> and <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+                    </label>
+                </div>
+                
+                <button type="submit" class="login-btn" id="signupBtn">
+                    <span>Create Account</span>
+                    <i class="fas fa-user-plus"></i>
+                </button>
+                
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                
+                <button type="button" class="google-btn" id="googleSignUpBtn">
+                    <i class="fab fa-google"></i>
+                    Sign up with Google
+                </button>
+                
+                <p class="signup-link">
+                    Already have an account? <a href="#" onclick="showLogin()">Sign in</a>
+                </p>
+            </form>
+            
+            <!-- Forgot Password Form (Hidden by default) -->
+            <form class="forgot-password-form" id="forgotPasswordForm" style="display: none;">
+                <div class="forgot-password-header">
+                    <h2>Reset Password</h2>
+                    <p>Enter your email address and we'll send you a link to reset your password.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="resetEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="resetEmail" name="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="login-btn" id="resetBtn">
+                    <span>Send Reset Link</span>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+                
+                <p class="signup-link">
+                    Remember your password? <a href="#" onclick="showLogin()">Sign in</a>
                 </p>
             </form>
         </div>
@@ -103,11 +204,29 @@
                             <p>Receive personalized recommendations from specialists</p>
                         </div>
                     </div>
+                    
+                    <div class="feature">
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                            <h3>Secure & Private</h3>
+                            <p>Your health data is protected with enterprise-grade security</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loadingText">Signing you in...</p>
+        </div>
+    </div>
+    
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

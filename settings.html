@@ -244,6 +244,86 @@
                                 <span class="range-value">7</span>
                             </div>
                         </div>
+                        
+                        <!-- Smart Noise Filtering Section -->
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>🎯 Smart Noise Filtering</h3>
+                                <p>Automatically remove background noise for more accurate analysis</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="smartNoiseFiltering" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Noise Filtering Settings (shown when enabled) -->
+                        <div class="setting-item noise-filtering-settings" id="noiseFilteringQuality" style="display: block;">
+                            <div class="setting-info">
+                                <h3>Filtering Quality</h3>
+                                <p>Higher quality provides better noise reduction but takes longer</p>
+                            </div>
+                            <select class="setting-select" id="noiseFilteringLevel">
+                                <option value="standard">Standard (Fast)</option>
+                                <option value="high" selected>High Quality</option>
+                                <option value="premium">Premium (Slowest, Best)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item noise-filtering-settings" id="adaptiveFiltering">
+                            <div class="setting-info">
+                                <h3>Adaptive Filtering</h3>
+                                <p>Automatically adjust filtering based on environment noise</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="adaptiveNoiseFiltering" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item noise-filtering-settings" id="voiceActivityDetection">
+                            <div class="setting-info">
+                                <h3>Voice Activity Detection</h3>
+                                <p>Preserve speech while removing background noise</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="voiceActivityDetection" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item noise-filtering-settings" id="testNoiseFiltering">
+                            <div class="setting-info">
+                                <h3>Test Audio Processing</h3>
+                                <p>Check if the smart noise filtering service is running</p>
+                            </div>
+                            <button class="setting-action" onclick="testAudioProcessingService()">
+                                <span id="audioServiceStatus">Test Service</span>
+                                <i class="fas fa-flask" id="audioServiceIcon"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item noise-filtering-info" id="noiseFilteringInfo" style="background: #f0fff4; border: 1px solid #9ae6b4; margin-top: 16px; display: none;">
+                            <div class="setting-info">
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <i class="fas fa-info-circle" style="color: #38a169; margin-right: 8px;"></i>
+                                    <h4 style="margin: 0; color: #2d3748;">Smart Noise Filtering Features</h4>
+                                </div>
+                                <ul style="margin: 0; padding-left: 20px; color: #4a5568; font-size: 14px;">
+                                    <li>Spectral subtraction for background noise removal</li>
+                                    <li>Adaptive Wiener filtering for dynamic environments</li>
+                                    <li>WebRTC voice activity detection</li>
+                                    <li>Breathing-specific frequency filtering</li>
+                                    <li>Real-time audio quality enhancement</li>
+                                    <li>Works best in noisy environments (traffic, office, home)</li>
+                                </ul>
+                                <div style="margin-top: 12px; padding: 8px; background: #e6fffa; border-radius: 6px; border-left: 3px solid #38a169;">
+                                    <small style="color: #2d5016; font-weight: 500;">
+                                        💡 Pro Tip: Enable this feature if you're recording in noisy environments like busy rooms, near traffic, or with air conditioning running.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

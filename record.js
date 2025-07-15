@@ -271,15 +271,98 @@ function handleAudioUpload(event) {
 }
 
 // Process audio recording
-function processAudioRecording(audioData) {
+async function processAudioRecording(audioData) {
     // Hide recording section
     document.getElementById('recordingSection').style.display = 'none';
     
     // Show loading section
     document.getElementById('analysisLoading').style.display = 'block';
     
-    // Simulate analysis progress
-    simulateAnalysisProgress();
+    try {
+        // Check if audio processing service is available
+        const audioServiceEnabled = localStorage.getItem('breathemate_audio_processing') !== 'disabled';
+        
+        if (audioServiceEnabled) {
+            await processAudioWithNoiseFiltering(audioData);
+        } else {
+            // Fallback to original processing
+            simulateAnalysisProgress();
+        }
+    } catch (error) {
+        console.error('Audio processing failed, falling back to simulation:', error);
+        showMessage('Using offline analysis mode', 'info');
+        simulateAnalysisProgress();
+    }
+}
+
+// New function for smart noise filtering
+async function processAudioWithNoiseFiltering(audioData) {
+    try {
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        // Update progress for noise filtering step
+        progressFill.style.width = '20%';
+        progressText.textContent = '20% - Filtering background noise...';
+        
+        // Convert audioData to base64 if it's a Blob
+        let audioBase64;
+        if (audioData instanceof Blob) {
+            audioBase64 = await blobToBase64(audioData);
+        } else {
+            audioBase64 = audioData;
+        }
+        
+        // Get recording quality setting
+        const settings = JSON.parse(localStorage.getItem('breathemate_settings') || '{}');
+        const recordingQuality = settings.recording?.quality || 'high';
+        
+        // Call audio processing service
+        const response = await fetch('http://localhost:5001/process-audio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                audio_data: audioBase64.split(',')[1], // Remove data URL prefix
+                options: {
+                    format: 'webm',
+                    quality: recordingQuality
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Audio processing failed: ${response.statusText}`);
+        }
+        
+        // Update progress
+        progressFill.style.width = '60%';
+        progressText.textContent = '60% - Analyzing processed audio...';
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Store processing information
+            localStorage.setItem('breathemate_audio_processing_info', JSON.stringify(result.processing_info));
+            
+            // Update progress
+            progressFill.style.width = '80%';
+            progressText.textContent = '80% - Generating analysis...';
+            
+            // Continue with enhanced analysis
+            await simulateAnalysisProgressWithEnhancedData(result.processing_info);
+        } else {
+            throw new Error(result.message || 'Audio processing failed');
+        }
+        
+    } catch (error) {
+        console.error('Noise filtering failed:', error);
+        showMessage('Noise filtering unavailable, using standard analysis', 'warning');
+        
+        // Fallback to standard processing
+        simulateAnalysisProgress();
+    }
 }
 
 // Simulate analysis progress
@@ -380,6 +463,169 @@ function updateAnalysisResults(data) {
     document.getElementById('voiceIrregularities').textContent = data.voiceIrregularities;
     document.getElementById('breathingRate').textContent = `${data.breathingRate}/min`;
 }
+
+// Show enhanced analysis results with noise filtering information
+function showEnhancedAnalysisResults(processingInfo) {
+    // Hide loading section
+    document.getElementById('analysisLoading').style.display = 'none';
+    
+    // Generate enhanced analysis results
+    const analysisData = generateEnhancedAnalysisResults(processingInfo);
+    
+    // Update UI with results
+    updateAnalysisResults(analysisData);
+    
+    // Add noise filtering information to the UI
+    addNoiseFilteringInfo(processingInfo);
+    
+    // Show results section
+    document.getElementById('analysisResults').style.display = 'block';
+    
+    // Scroll to results
+    document.getElementById('analysisResults').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+    });
+    
+    // Show success message with filtering details
+    const noiseReduction = processingInfo.noise_reduction_db || 0;
+    if (noiseReduction > 3) {
+        showMessage(`✨ Audio enhanced! Noise reduced by ${noiseReduction.toFixed(1)} dB for more accurate analysis.`, 'success');
+    }
+}
+
+// Generate enhanced analysis with noise filtering considerations
+function generateEnhancedAnalysisResults(processingInfo) {
+    const baseResults = generateAnalysisResults();
+    
+    // Adjust accuracy based on noise filtering quality
+    const qualityScore = processingInfo.quality_score || 75;
+    const noiseReduction = processingInfo.noise_reduction_db || 0;
+    
+    // Improve confidence if good noise reduction was achieved
+    if (noiseReduction > 5 && qualityScore > 80) {
+        baseResults.confidenceBoost = 15;
+        baseResults.enhancedAccuracy = true;
+    } else if (noiseReduction > 2) {
+        baseResults.confidenceBoost = 8;
+        baseResults.enhancedAccuracy = true;
+    }
+    
+    // Add processing information
+    baseResults.processingInfo = processingInfo;
+    baseResults.noiseFiltered = noiseReduction > 1;
+    
+    return baseResults;
+}
+
+// Add noise filtering information to the results UI
+function addNoiseFilteringInfo(processingInfo) {
+    try {
+        // Find the audio reference card
+        const audioReferenceCard = document.querySelector('.audio-reference .card-content');
+        if (!audioReferenceCard) return;
+        
+        // Create noise filtering info section
+        const noiseFilteringSection = document.createElement('div');
+        noiseFilteringSection.className = 'noise-filtering-info';
+        noiseFilteringSection.style.marginTop = '20px';
+        noiseFilteringSection.style.padding = '16px';
+        noiseFilteringSection.style.backgroundColor = '#f0fff4';
+        noiseFilteringSection.style.border = '1px solid #9ae6b4';
+        noiseFilteringSection.style.borderRadius = '8px';
+        
+        const qualityScore = processingInfo.quality_score || 75;
+        const noiseReduction = processingInfo.noise_reduction_db || 0;
+        const processingTime = processingInfo.processing_time_seconds || 0;
+        
+        noiseFilteringSection.innerHTML = `
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <i class="fas fa-filter" style="color: #38a169; margin-right: 8px;"></i>
+                <h4 style="margin: 0; color: #2d3748;">Smart Noise Filtering Applied</h4>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; font-size: 14px;">
+                <div>
+                    <span style="color: #718096; display: block;">Noise Reduction</span>
+                    <span style="font-weight: 600; color: #2d3748;">${noiseReduction.toFixed(1)} dB</span>
+                </div>
+                <div>
+                    <span style="color: #718096; display: block;">Audio Quality</span>
+                    <span style="font-weight: 600; color: ${qualityScore > 80 ? '#38a169' : qualityScore > 60 ? '#d69e2e' : '#e53e3e'};">
+                        ${qualityScore.toFixed(0)}%
+                    </span>
+                </div>
+                <div>
+                    <span style="color: #718096; display: block;">Processing Time</span>
+                    <span style="font-weight: 600; color: #2d3748;">${processingTime.toFixed(1)}s</span>
+                </div>
+            </div>
+            <div style="margin-top: 12px; font-size: 13px; color: #4a5568;">
+                Applied: ${processingInfo.processing_steps ? processingInfo.processing_steps.join(', ') : 'Multi-stage noise filtering'}
+            </div>
+        `;
+        
+        audioReferenceCard.appendChild(noiseFilteringSection);
+        
+    } catch (error) {
+        console.warn('Could not add noise filtering info to UI:', error);
+    }
+}
+
+// Helper function to convert Blob to base64
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// Add noise filtering status to settings
+function checkAudioProcessingService() {
+    fetch('http://localhost:5001/health')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'healthy') {
+                localStorage.setItem('breathemate_audio_processing', 'enabled');
+                console.log('✅ Smart noise filtering available');
+                
+                // Show notification about enhanced processing
+                if (!localStorage.getItem('breathemate_noise_filtering_shown')) {
+                    setTimeout(() => {
+                        showMessage('🎯 Enhanced audio processing enabled! Background noise will be automatically filtered for better analysis.', 'info');
+                        localStorage.setItem('breathemate_noise_filtering_shown', 'true');
+                    }, 2000);
+                }
+            }
+        })
+        .catch(error => {
+            localStorage.setItem('breathemate_audio_processing', 'disabled');
+            console.log('⚠️ Smart noise filtering unavailable, using standard processing');
+        });
+}
+
+// Check audio processing service on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize page
+    initializePage();
+    loadRandomPrompt();
+    setupAudioUpload();
+    
+    // Check if audio processing service is available
+    checkAudioProcessingService();
+});
+
+// Cleanup when page is unloaded
+window.addEventListener('beforeunload', function() {
+    if (isRecording) {
+        stopRecording();
+    }
+    
+    if (audioContext) {
+        audioContext.close();
+    }
+});
 
 // Action button functions
 function tryAgain() {

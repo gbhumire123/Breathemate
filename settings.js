@@ -282,6 +282,54 @@ function setupEventListeners() {
         applyReduceMotion(this.checked);
         showSettingChanged(this.closest('.setting-item'));
     });
+    
+    // Smart Noise Filtering settings
+    document.getElementById('smartNoiseFiltering').addEventListener('change', function() {
+        settingsData.recording = settingsData.recording || {};
+        settingsData.recording.smartNoiseFiltering = this.checked;
+        saveSettings();
+        toggleNoiseFilteringSettings(this.checked);
+        showSettingChanged(this.closest('.setting-item'));
+        
+        if (this.checked) {
+            // Show info panel when enabled
+            document.getElementById('noiseFilteringInfo').style.display = 'block';
+            showMessage('Smart noise filtering enabled! Your recordings will be automatically enhanced.', 'success');
+        } else {
+            document.getElementById('noiseFilteringInfo').style.display = 'none';
+            showMessage('Smart noise filtering disabled.', 'info');
+        }
+    });
+    
+    document.getElementById('noiseFilteringLevel').addEventListener('change', function() {
+        settingsData.recording = settingsData.recording || {};
+        settingsData.recording.noiseFilteringLevel = this.value;
+        saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+        
+        // Update quality description
+        const qualityDescriptions = {
+            'standard': 'Fast processing with basic noise reduction',
+            'high': 'Balanced quality and speed for most environments',
+            'premium': 'Maximum quality for challenging environments'
+        };
+        
+        showMessage(`Filtering quality set to ${this.value}: ${qualityDescriptions[this.value]}`, 'info');
+    });
+    
+    document.getElementById('adaptiveNoiseFiltering').addEventListener('change', function() {
+        settingsData.recording = settingsData.recording || {};
+        settingsData.recording.adaptiveFiltering = this.checked;
+        saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+    });
+    
+    document.getElementById('voiceActivityDetection').addEventListener('change', function() {
+        settingsData.recording = settingsData.recording || {};
+        settingsData.recording.voiceActivityDetection = this.checked;
+        saveSettings();
+        showSettingChanged(this.closest('.setting-item'));
+    });
 }
 
 // Save settings to localStorage
@@ -1619,3 +1667,208 @@ document.addEventListener('DOMContentLoaded', function() {
         enhanceKeyboardNavigation();
     }, 500);
 });
+
+// Smart Noise Filtering Functions
+function toggleNoiseFilteringSettings(enabled) {
+    const noiseFilteringSettings = document.querySelectorAll('.noise-filtering-settings');
+    
+    noiseFilteringSettings.forEach(setting => {
+        if (enabled) {
+            setting.style.display = 'flex';
+            setting.classList.add('active');
+        } else {
+            setting.style.display = 'none';
+            setting.classList.remove('active');
+        }
+    });
+}
+
+// Test audio processing service
+async function testAudioProcessingService() {
+    const button = document.getElementById('audioServiceStatus');
+    const icon = document.getElementById('audioServiceIcon');
+    const originalText = button.textContent;
+    const originalIcon = icon.className;
+    
+    // Update button state
+    button.textContent = 'Testing...';
+    icon.className = 'fas fa-spinner fa-spin';
+    
+    try {
+        const response = await fetch('http://localhost:5001/health', {
+            method: 'GET',
+            timeout: 5000
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.status === 'healthy') {
+                // Service is running
+                button.textContent = 'Service Online';
+                icon.className = 'fas fa-check-circle';
+                button.parentElement.style.color = '#38a169';
+                
+                // Enable smart noise filtering if it was disabled
+                const smartNoiseFiltering = document.getElementById('smartNoiseFiltering');
+                if (!smartNoiseFiltering.checked) {
+                    smartNoiseFiltering.checked = true;
+                    settingsData.recording = settingsData.recording || {};
+                    settingsData.recording.smartNoiseFiltering = true;
+                    saveSettings();
+                    toggleNoiseFilteringSettings(true);
+                }
+                
+                // Show info panel
+                document.getElementById('noiseFilteringInfo').style.display = 'block';
+                
+                showMessage('✅ Smart noise filtering service is running! Your recordings will be automatically enhanced.', 'success');
+                
+                // Store service status
+                localStorage.setItem('breathemate_audio_processing', 'enabled');
+                
+                // Show detailed service info
+                setTimeout(() => {
+                    showMessage(`🔧 Service: ${data.service} v${data.version || '1.0.0'}`, 'info');
+                }, 2000);
+            } else {
+                throw new Error('Service unhealthy');
+            }
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+    } catch (error) {
+        // Service is not available
+        button.textContent = 'Service Offline';
+        icon.className = 'fas fa-times-circle';
+        button.parentElement.style.color = '#e53e3e';
+        
+        // Disable smart noise filtering
+        const smartNoiseFiltering = document.getElementById('smartNoiseFiltering');
+        if (smartNoiseFiltering.checked) {
+            smartNoiseFiltering.checked = false;
+            settingsData.recording = settingsData.recording || {};
+            settingsData.recording.smartNoiseFiltering = false;
+            saveSettings();
+            toggleNoiseFilteringSettings(false);
+        }
+        
+        // Hide info panel
+        document.getElementById('noiseFilteringInfo').style.display = 'none';
+        
+        showMessage('⚠️ Smart noise filtering service is not running. Start the service to enable enhanced audio processing.', 'warning');
+        
+        // Show instructions
+        setTimeout(() => {
+            showMessage('💡 Run "./start_audio_service.sh" in terminal to start the audio processing service.', 'info');
+        }, 3000);
+        
+        // Store service status
+        localStorage.setItem('breathemate_audio_processing', 'disabled');
+        
+        console.error('Audio processing service test failed:', error);
+    }
+    
+    // Reset button after delay
+    setTimeout(() => {
+        button.textContent = originalText;
+        icon.className = originalIcon;
+        button.parentElement.style.color = '';
+    }, 5000);
+}
+
+// Initialize noise filtering settings on page load
+function initializeNoiseFilteringSettings() {
+    // Load saved noise filtering settings
+    if (settingsData.recording) {
+        // Smart noise filtering toggle
+        const smartNoiseFiltering = document.getElementById('smartNoiseFiltering');
+        if (smartNoiseFiltering) {
+            smartNoiseFiltering.checked = settingsData.recording.smartNoiseFiltering !== false; // Default to true
+            toggleNoiseFilteringSettings(smartNoiseFiltering.checked);
+            
+            if (smartNoiseFiltering.checked) {
+                document.getElementById('noiseFilteringInfo').style.display = 'block';
+            }
+        }
+        
+        // Noise filtering quality level
+        const noiseFilteringLevel = document.getElementById('noiseFilteringLevel');
+        if (noiseFilteringLevel) {
+            noiseFilteringLevel.value = settingsData.recording.noiseFilteringLevel || 'high';
+        }
+        
+        // Adaptive filtering
+        const adaptiveFiltering = document.getElementById('adaptiveNoiseFiltering');
+        if (adaptiveFiltering) {
+            adaptiveFiltering.checked = settingsData.recording.adaptiveFiltering !== false; // Default to true
+        }
+        
+        // Voice activity detection
+        const voiceActivityDetection = document.getElementById('voiceActivityDetection');
+        if (voiceActivityDetection) {
+            voiceActivityDetection.checked = settingsData.recording.voiceActivityDetection !== false; // Default to true
+        }
+    }
+    
+    // Test service availability on page load
+    setTimeout(() => {
+        testAudioProcessingService();
+    }, 1000);
+}
+
+// Helper functions for profile management
+function getProfileJournalCount(profileId) {
+    const profile = currentUserProfiles.find(p => p.id === profileId);
+    return profile ? (profile.journalEntries ? profile.journalEntries.length : 0) : 0;
+}
+
+function getProfileLastActivity(profileId) {
+    const profile = currentUserProfiles.find(p => p.id === profileId);
+    if (!profile || !profile.journalEntries || profile.journalEntries.length === 0) {
+        return 'No activity';
+    }
+    
+    const lastEntry = profile.journalEntries[0]; // Assuming entries are sorted by date
+    const lastDate = new Date(lastEntry.date);
+    const now = new Date();
+    const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
+}
+
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function editUserProfile(profileId) {
+    showMessage('Profile editing feature coming soon! Manage user details and preferences.', 'info');
+}
+
+function deleteUserProfile(profileId) {
+    const profile = currentUserProfiles.find(p => p.id === profileId);
+    if (!profile || profile.isMainAccount) {
+        showMessage('Cannot delete the main account.', 'error');
+        return;
+    }
+    
+    const confirmDelete = confirm(`Are you sure you want to delete ${profile.name}'s profile? This will permanently remove all their data.`);
+    
+    if (confirmDelete) {
+        // Remove profile from array
+        currentUserProfiles = currentUserProfiles.filter(p => p.id !== profileId);
+        saveUserProfiles();
+        
+        // Close any open modals and refresh user management
+        closeUserManagement();
+        showMessage(`${profile.name}'s profile has been deleted.`, 'success');
+        
+        // Refresh UI if needed
+        updateCurrentUserDisplay();
+    }
+}

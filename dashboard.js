@@ -1,18 +1,165 @@
-// Dashboard functionality
+// Dashboard functionality with Firebase Authentication Guard
 document.addEventListener('DOMContentLoaded', function() {
+    // Authentication guard - check before initializing dashboard
+    if (!checkAuthentication()) {
+        return; // Exit if not authenticated
+    }
+    
     initializeDashboard();
     loadUserData();
-    updateStatusCards();
-    initializeDailyReminderSystem();
-    initializeMultiProfileDashboard();
-    initializeAIChat(); // Add AI chat initialization
+    initializeStats();
+    initializeHealthTracking();
+    initializeVitalSigns();
+    loadJournalEntries();
 });
+
+// Enhanced authentication check with Firebase support
+function checkAuthentication() {
+    const userEmail = localStorage.getItem('breathemate_email');
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    const userUid = localStorage.getItem('breathemate_uid');
+    
+    if (!userEmail && !isGuest) {
+        // No authentication found
+        console.log('❌ No authentication found - redirecting to login');
+        redirectToLogin();
+        return false;
+    }
+    
+    // Check for Firebase authentication
+    if (window.firebaseAuth) {
+        const currentUser = window.firebaseAuth.currentUser;
+        if (!currentUser && !isGuest) {
+            console.log('❌ Firebase user not authenticated - redirecting to login');
+            redirectToLogin();
+            return false;
+        }
+    }
+    
+    // Show authentication status
+    if (isGuest) {
+        showGuestModeIndicator();
+    } else if (userUid) {
+        showAuthenticatedUserIndicator();
+    }
+    
+    return true;
+}
+
+// Redirect to login page
+function redirectToLogin() {
+    // Clear any invalid authentication data
+    localStorage.removeItem('breathemate_email');
+    localStorage.removeItem('breathemate_username');
+    localStorage.removeItem('breathemate_uid');
+    localStorage.removeItem('breathemate_guest_mode');
+    
+    // Show message before redirect
+    showMessage('Please sign in to access BreatheMate', 'info');
+    
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
+}
+
+// Show guest mode indicator
+function showGuestModeIndicator() {
+    const profileBtn = document.querySelector('.profile-btn');
+    if (profileBtn) {
+        // Add guest indicator
+        profileBtn.innerHTML = `
+            <div class="profile-avatar guest-avatar">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <div class="profile-info">
+                <span class="profile-name">Guest User</span>
+                <span class="profile-status">Limited Access</span>
+            </div>
+            <i class="fas fa-chevron-down"></i>
+        `;
+        
+        // Add guest styling
+        profileBtn.classList.add('guest-mode');
+    }
+    
+    // Show guest limitations banner
+    setTimeout(() => {
+        showGuestLimitationsBanner();
+    }, 2000);
+}
+
+// Show authenticated user indicator
+function showAuthenticatedUserIndicator() {
+    const provider = localStorage.getItem('breathemate_provider') || 'email';
+    const emailVerified = localStorage.getItem('breathemate_email_verified') === 'true';
+    
+    // Add verification badge if email verified
+    if (emailVerified && provider === 'email') {
+        const profileBtn = document.querySelector('.profile-btn');
+        if (profileBtn) {
+            const verificationBadge = document.createElement('div');
+            verificationBadge.className = 'verification-badge';
+            verificationBadge.innerHTML = '<i class="fas fa-check-circle"></i>';
+            verificationBadge.title = 'Verified Account';
+            profileBtn.appendChild(verificationBadge);
+        }
+    }
+    
+    // Show provider-specific indicators
+    if (provider === 'google') {
+        const profileInfo = document.querySelector('.profile-info');
+        if (profileInfo) {
+            const googleBadge = document.createElement('span');
+            googleBadge.className = 'provider-badge google';
+            googleBadge.innerHTML = '<i class="fab fa-google"></i>';
+            googleBadge.title = 'Google Account';
+            profileInfo.appendChild(googleBadge);
+        }
+    }
+}
+
+// Show guest limitations banner
+function showGuestLimitationsBanner() {
+    const existingBanner = document.querySelector('.guest-limitations-banner');
+    if (existingBanner) return; // Already shown
+    
+    const banner = document.createElement('div');
+    banner.className = 'guest-limitations-banner';
+    banner.innerHTML = `
+        <div class="banner-content">
+            <div class="banner-icon">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="banner-text">
+                <strong>Guest Mode Active</strong>
+                <p>You're using limited features. <a href="index.html" class="upgrade-link">Sign up</a> to unlock full health tracking!</p>
+            </div>
+            <button class="banner-close" onclick="closeGuestBanner()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // Insert at top of main content
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.insertBefore(banner, mainContent.firstChild);
+}
+
+// Close guest banner
+function closeGuestBanner() {
+    const banner = document.querySelector('.guest-limitations-banner');
+    if (banner) {
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => banner.remove(), 300);
+    }
+}
 
 // Initialize dashboard
 function initializeDashboard() {
     // Check if user is logged in
     const userEmail = localStorage.getItem('breathemate_email');
-    if (!userEmail) {
+    if (!userEmail && localStorage.getItem('breathemate_guest_mode') !== 'true') {
         // Redirect to login if not authenticated
         window.location.href = 'index.html';
         return;
@@ -20,8 +167,23 @@ function initializeDashboard() {
     
     // Load user name from localStorage or use default
     const userName = localStorage.getItem('breathemate_username') || 'Demo User';
-    document.getElementById('userName').textContent = userName;
-    document.getElementById('profileName').textContent = userName;
+    const userNameElement = document.getElementById('userName');
+    const profileNameElement = document.getElementById('profileName');
+    
+    if (userNameElement) userNameElement.textContent = userName;
+    if (profileNameElement) profileNameElement.textContent = userName;
+    
+    // Load user photo if available
+    const photoURL = localStorage.getItem('breathemate_photo_url');
+    if (photoURL) {
+        const profileAvatar = document.querySelector('.profile-avatar');
+        if (profileAvatar) {
+            profileAvatar.style.backgroundImage = `url(${photoURL})`;
+            profileAvatar.style.backgroundSize = 'cover';
+            profileAvatar.style.backgroundPosition = 'center';
+            profileAvatar.innerHTML = ''; // Remove default icon
+        }
+    }
     
     // Add click handlers for closing dropdowns when clicking outside
     document.addEventListener('click', function(event) {
@@ -32,21 +194,87 @@ function initializeDashboard() {
             closeNotifications();
         }
     });
+
+    // Initialize multi-profile support if available
+    initializeMultiProfileSupport();
 }
 
-// Load user data
+// Initialize multi-profile support
+function initializeMultiProfileSupport() {
+    const profiles = JSON.parse(localStorage.getItem('breathemate_user_profiles') || '[]');
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    
+    if (profiles.length > 1 && !isGuest) {
+        // Show profile switcher in header
+        const profileBtn = document.querySelector('.profile-btn');
+        if (profileBtn) {
+            profileBtn.classList.add('multi-profile');
+            
+            // Add profile count indicator
+            const profileCount = document.createElement('div');
+            profileCount.className = 'profile-count';
+            profileCount.textContent = profiles.length;
+            profileBtn.appendChild(profileCount);
+        }
+    }
+}
+
+// Enhanced load user data with Firebase support
 function loadUserData() {
-    // Simulate loading user data from backend
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    
+    // Simulate loading user data from backend or Firebase
     const userData = {
         name: localStorage.getItem('breathemate_username') || 'Demo User',
         email: localStorage.getItem('breathemate_email') || 'demo@breathemate.com',
+        uid: localStorage.getItem('breathemate_uid') || null,
+        provider: localStorage.getItem('breathemate_provider') || 'email',
+        emailVerified: localStorage.getItem('breathemate_email_verified') === 'true',
+        photoURL: localStorage.getItem('breathemate_photo_url') || null,
         lastScan: localStorage.getItem('breathemate_last_scan') || null,
         riskLevel: localStorage.getItem('breathemate_risk_level') || 'No scan yet',
-        dailyStreak: parseInt(localStorage.getItem('breathemate_daily_streak')) || 0
+        dailyStreak: parseInt(localStorage.getItem('breathemate_daily_streak')) || 0,
+        isGuest: isGuest
     };
     
     // Update UI with user data
     updateUserInterface(userData);
+    
+    // Load additional data for authenticated users
+    if (!isGuest && userData.uid) {
+        loadFirebaseUserData(userData.uid);
+    }
+}
+
+// Load user data from Firebase Firestore
+async function loadFirebaseUserData(uid) {
+    if (!window.firebaseDb) return;
+    
+    try {
+        const userDoc = await window.firebaseDb.doc(`users/${uid}`).get();
+        
+        if (userDoc.exists) {
+            const firebaseData = userDoc.data();
+            
+            // Update local storage with Firebase data
+            if (firebaseData.settings) {
+                localStorage.setItem('breathemate_settings', JSON.stringify(firebaseData.settings));
+            }
+            
+            if (firebaseData.profiles) {
+                localStorage.setItem('breathemate_user_profiles', JSON.stringify(firebaseData.profiles));
+            }
+            
+            if (firebaseData.journalEntries) {
+                localStorage.setItem('breathemate_journal', JSON.stringify(firebaseData.journalEntries));
+                loadJournalEntries(); // Refresh journal display
+            }
+            
+            console.log('✅ Firebase user data synchronized');
+        }
+    } catch (error) {
+        console.error('Error loading Firebase user data:', error);
+    }
 }
 
 // Update user interface with data
@@ -203,6 +431,15 @@ function openProfile() {
     
     const profiles = JSON.parse(localStorage.getItem('breathemate_user_profiles') || '[]');
     const settings = JSON.parse(localStorage.getItem('breathemate_settings') || '{}');
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    
+    if (isGuest) {
+        showMessage('Sign up to access profile management and save your data!', 'info');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+        return;
+    }
     
     if (settings.caregiverMode && profiles.length > 1) {
         showMessage('Opening profile management...', 'info');
@@ -220,12 +457,29 @@ function openProfile() {
 function logout() {
     closeProfileMenu();
     
-    // Clear user data
-    localStorage.removeItem('breathemate_email');
-    localStorage.removeItem('breathemate_username');
-    localStorage.removeItem('breathemate_remember');
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
     
-    showMessage('Logging out...', 'info');
+    if (isGuest) {
+        // Guest logout
+        localStorage.removeItem('breathemate_guest_mode');
+        localStorage.removeItem('breathemate_guest_id');
+        localStorage.removeItem('breathemate_username');
+        localStorage.removeItem('breathemate_email');
+        
+        showMessage('Guest session ended. Redirecting to login...', 'info');
+    } else if (window.firebaseAuth && window.breatheMateAuth) {
+        // Firebase logout
+        window.breatheMateAuth.signOut();
+        return; // Firebase auth will handle the redirect
+    } else {
+        // Fallback logout
+        localStorage.removeItem('breathemate_email');
+        localStorage.removeItem('breathemate_username');
+        localStorage.removeItem('breathemate_uid');
+        localStorage.removeItem('breathemate_remember');
+        
+        showMessage('Logging out...', 'info');
+    }
     
     setTimeout(() => {
         window.location.href = 'index.html';
@@ -487,6 +741,9 @@ function quickSwitchToProfile(profileId) {
 
 // Save current profile data from dashboard
 function saveCurrentProfileDataDashboard() {
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    if (isGuest) return; // Don't save guest data
+    
     const profiles = JSON.parse(localStorage.getItem('breathemate_user_profiles') || '[]');
     const activeProfileId = localStorage.getItem('breathemate_active_profile');
     const currentProfile = profiles.find(p => p.id === activeProfileId);
@@ -498,44 +755,44 @@ function saveCurrentProfileDataDashboard() {
         
         // Save updated profiles
         localStorage.setItem('breathemate_user_profiles', JSON.stringify(profiles));
+        
+        // Sync with Firebase if available
+        syncWithFirebase();
     }
 }
 
-// Load profile data for dashboard
-function loadProfileDataDashboard(profile) {
-    // Load profile's journal entries
-    localStorage.setItem('breathemate_journal', JSON.stringify(profile.journalEntries || []));
+// Sync data with Firebase
+async function syncWithFirebase() {
+    const uid = localStorage.getItem('breathemate_uid');
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
     
-    // Update user info
-    localStorage.setItem('breathemate_username', profile.name);
-    localStorage.setItem('breathemate_email', profile.email);
+    if (!uid || isGuest || !window.firebaseDb) return;
     
-    // Update last scan and risk level based on profile's data
-    if (profile.journalEntries && profile.journalEntries.length > 0) {
-        const latestEntry = profile.journalEntries[0];
-        if (latestEntry.type === 'breath_analysis') {
-            localStorage.setItem('breathemate_last_scan', latestEntry.date);
-            localStorage.setItem('breathemate_risk_level', latestEntry.riskLevel || 'Low Risk');
-        }
-    } else {
-        localStorage.removeItem('breathemate_last_scan');
-        localStorage.setItem('breathemate_risk_level', 'No scan yet');
+    try {
+        const userRef = window.firebaseDb.doc(`users/${uid}`);
+        
+        const updateData = {
+            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+            journalEntries: JSON.parse(localStorage.getItem('breathemate_journal') || '[]'),
+            profiles: JSON.parse(localStorage.getItem('breathemate_user_profiles') || '[]'),
+            settings: JSON.parse(localStorage.getItem('breathemate_settings') || '{}')
+        };
+        
+        await userRef.update(updateData);
+        console.log('✅ Data synced with Firebase');
+        
+    } catch (error) {
+        console.error('Error syncing with Firebase:', error);
     }
 }
 
-// Close quick profile switcher
-function closeQuickProfileSwitcher() {
-    const modal = document.querySelector('.quick-profile-switcher');
-    if (modal) {
-        modal.classList.remove('active');
-        setTimeout(() => modal.remove(), 300);
+// Auto-sync data periodically
+setInterval(() => {
+    const isGuest = localStorage.getItem('breathemate_guest_mode') === 'true';
+    if (!isGuest) {
+        syncWithFirebase();
     }
-}
-
-// Utility function to capitalize first letter
-function capitalizeFirst(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
+}, 5 * 60 * 1000); // Sync every 5 minutes
 
 // Enhanced openProfile function for multi-profile support
 function openProfile() {

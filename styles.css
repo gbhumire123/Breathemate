@@ -217,13 +217,53 @@ body {
 
 .quick-login-btn {
     width: 100%;
-    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
     border: none;
     padding: 14px 24px;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4);
+}
+
+.quick-login-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.quick-login-btn:hover::after {
+    left: 100%;
+}
+
+.guest-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -233,79 +273,207 @@ body {
     margin-bottom: 16px;
 }
 
-.quick-login-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(56, 161, 105, 0.3);
+.guest-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(113, 128, 150, 0.3);
 }
 
-.divider {
-    text-align: center;
-    position: relative;
-    margin: 24px 0;
-    color: #a0aec0;
+/* Form Animation */
+.login-form, .signup-form, .forgot-password-form {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Checkbox styling for terms */
+.checkbox-container {
     font-size: 14px;
+    line-height: 1.5;
 }
 
-.divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
+.checkbox-container a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.checkbox-container a:hover {
+    text-decoration: underline;
+}
+
+/* Enhanced Input Focus States */
+.input-wrapper input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.input-wrapper input.error {
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+/* Password Strength Indicator */
+.password-strength {
+    margin-top: 8px;
+    padding: 8px 0;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 4px;
+    background-color: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.strength-fill {
+    height: 100%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.strength-text {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Password strength levels */
+.password-strength.very-weak .strength-fill {
+    background-color: #e53e3e;
+}
+
+.password-strength.very-weak .strength-text {
+    color: #e53e3e;
+}
+
+.password-strength.weak .strength-fill {
+    background-color: #fd7f28;
+}
+
+.password-strength.weak .strength-text {
+    color: #fd7f28;
+}
+
+.password-strength.fair .strength-fill {
+    background-color: #d69e2e;
+}
+
+.password-strength.fair .strength-text {
+    color: #d69e2e;
+}
+
+.password-strength.strong .strength-fill {
+    background-color: #38a169;
+}
+
+.password-strength.strong .strength-text {
+    color: #38a169;
+}
+
+.password-strength.very-strong .strength-fill {
+    background-color: #00b894;
+}
+
+.password-strength.very-strong .strength-text {
+    color: #00b894;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
     left: 0;
     right: 0;
-    height: 1px;
-    background: #e2e8f0;
-    z-index: 0;
-}
-
-.divider span {
-    background: white;
-    padding: 0 16px;
-    position: relative;
-    z-index: 1;
-}
-
-.google-btn {
-    width: 100%;
-    background: white;
-    color: #4a5568;
-    border: 2px solid #e2e8f0;
-    padding: 16px 24px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
 }
 
-.google-btn:hover {
-    border-color: #cbd5e0;
-    background: #f7fafc;
-}
-
-.google-btn i {
-    color: #ea4335;
-    font-size: 18px;
-}
-
-.signup-link {
+.loading-spinner {
     text-align: center;
-    color: #718096;
+    color: white;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Error Message Styles */
+.error-message {
+    color: #e53e3e;
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.error-message::before {
+    content: "⚠️";
+    font-size: 10px;
+}
+
+/* Authentication Message */
+.auth-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
     font-size: 14px;
+    z-index: 10001;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
-.signup-link a {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: 600;
+.auth-message.success {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
 }
 
-.signup-link a:hover {
-    text-decoration: underline;
+.auth-message.error {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+}
+
+.auth-message.warning {
+    background: linear-gradient(135deg, #d69e2e 0%, #b7791f 100%);
+}
+
+.auth-message.info {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
 }
 
 /* Info Panel */
@@ -437,4 +605,57 @@ body {
 
 .loading {
     animation: pulse 1.5s infinite;
+}
+
+/* Additional Security Feature Styles */
+.security-features {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.security-features h4 {
+    margin: 0 0 8px 0;
+    color: #2d3748;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.security-features ul {
+    margin: 0;
+    padding-left: 16px;
+    list-style: none;
+}
+
+.security-features li {
+    font-size: 12px;
+    color: #4a5568;
+    margin-bottom: 4px;
+    position: relative;
+}
+
+.security-features li::before {
+    content: "✓";
+    color: #38a169;
+    font-weight: bold;
+    position: absolute;
+    left: -16px;
+}
+
+/* Email Verification Banner */
+.email-verification-banner {
+    background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+    color: #742a2a;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #fc8181;
+}
+
+.email-verification-banner strong {
+    color: #c53030;
 }
