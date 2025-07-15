@@ -1,33 +1,14 @@
-// Firebase Configuration
-// Replace these with your actual Firebase project credentials from Firebase Console
-const firebaseConfig = {
-    apiKey: "your-real-api-key-here",  // Get from Firebase Console > Project Settings
-    authDomain: "your-project-id.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project-id.appspot.com",
-    messagingSenderId: "your-sender-id",
-    appId: "your-app-id",
-    measurementId: "your-measurement-id"
-};
+// Firebase Configuration - DISABLED FOR NOW
+// Using simplified authentication instead
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Disable Firebase initialization to force fallback to simplified auth
+console.log('🔧 Firebase disabled - using simplified authentication');
 
-// Initialize Firebase Authentication and get a reference to the service
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Create mock Firebase objects to prevent errors
+window.firebaseAuth = null;
+window.firebaseDb = null;
+window.googleProvider = null;
+window.firebase = null;
 
-// Configure Google Auth Provider
-const googleProvider = new firebase.auth.GoogleAuthProvider();
-googleProvider.addScope('profile');
-googleProvider.addScope('email');
-
-// Enable persistence for offline access
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-// Export for use in other files
-window.firebaseAuth = auth;
-window.firebaseDb = db;
-window.googleProvider = googleProvider;
-
-console.log('✅ Firebase initialized successfully');
+// Force the auth system to use simplified mode
+window.forceSimplifiedAuth = true;

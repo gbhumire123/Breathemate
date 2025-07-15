@@ -665,7 +665,147 @@ class SimplifiedAuth {
         });
     }
 
-    // ...existing code...
+    // Handle simplified email/password login
+    async handleSimpleLogin(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        if (!email || !password) {
+            this.showMessage('Please enter email and password.', 'error');
+            return;
+        }
+
+        this.showLoading('Signing you in...');
+
+        // Simulate network delay
+        setTimeout(() => {
+            const user = this.users[email];
+            
+            if (!user || user.password !== password) {
+                this.hideLoading();
+                this.showMessage('Invalid email or password.', 'error');
+                return;
+            }
+
+            // Successful login
+            this.loginUser(user, rememberMe);
+        }, 1000);
+    }
+
+    // Handle simplified user signup
+    async handleSimpleSignup(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const agreeTerms = document.getElementById('agreeTerms').checked;
+
+        // Validation
+        if (!name || !email || !password || !confirmPassword) {
+            this.showMessage('Please fill in all fields.', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.showMessage('Passwords do not match.', 'error');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showMessage('Password must be at least 6 characters.', 'error');
+            return;
+        }
+
+        if (!agreeTerms) {
+            this.showMessage('Please accept the terms and conditions.', 'error');
+            return;
+        }
+
+        if (this.users[email]) {
+            this.showMessage('An account with this email already exists.', 'error');
+            return;
+        }
+
+        this.showLoading('Creating your account...');
+
+        // Create new user
+        setTimeout(() => {
+            const newUser = {
+                email: email,
+                password: password,
+                name: name,
+                verified: true,
+                createdAt: new Date().toISOString()
+            };
+
+            this.users[email] = newUser;
+            this.saveUsers();
+
+            this.showMessage('Account created successfully!', 'success');
+            
+            // Auto-login the new user
+            setTimeout(() => {
+                this.loginUser(newUser, false);
+            }, 1500);
+        }, 1000);
+    }
+
+    quickDemoLogin() {
+        // Auto-fill demo credentials
+        document.getElementById('email').value = 'demo@breathemate.com';
+        document.getElementById('password').value = 'Demo123!';
+        document.getElementById('rememberMe').checked = true;
+        
+        this.showMessage('Demo credentials loaded! Logging in...', 'info');
+        
+        // Auto-submit
+        setTimeout(() => {
+            this.loginUser(this.users['demo@breathemate.com'], true);
+        }, 1000);
+    }
+
+    guestLogin() {
+        this.showLoading('Setting up guest access...');
+        
+        const guestUser = {
+            email: 'guest@breathemate.local',
+            name: 'Guest User',
+            isGuest: true,
+            verified: true
+        };
+        
+        setTimeout(() => {
+            this.loginUser(guestUser, false);
+        }, 1000);
+    }
+
+    loginUser(user, rememberMe) {
+        // Store user data
+        const storage = rememberMe ? localStorage : sessionStorage;
+        
+        storage.setItem('breathemate_email', user.email);
+        storage.setItem('breathemate_username', user.name);
+        storage.setItem('breathemate_email_verified', user.verified.toString());
+        storage.setItem('breathemate_logged_in', 'true');
+        
+        if (user.isGuest) {
+            storage.setItem('breathemate_guest_mode', 'true');
+            storage.setItem('breathemate_guest_id', 'guest_' + Date.now());
+        }
+
+        this.hideLoading();
+        this.showMessage(`Welcome back, ${user.name}!`, 'success');
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1500);
+    }
 
     // Show "Coming Soon" message for Google login
     showGoogleComingSoon() {
@@ -790,22 +930,19 @@ function showPrivacy() {
 
 // Initialize authentication when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Try Firebase first, then fallback to simplified auth
+    // Always use simplified authentication for reliability
     setTimeout(() => {
-        try {
-            // Check if Firebase is available
-            if (window.firebase && window.firebaseAuth) {
-                window.breatheMateAuth = new BreatheMateAuth();
-                console.log('🔐 BreatheMate Firebase Authentication Initialized');
-            } else {
-                throw new Error('Firebase not available');
+        console.log('🔐 Initializing simplified authentication system');
+        window.breatheMateAuth = new SimplifiedAuth();
+        console.log('🔐 BreatheMate Simplified Authentication Ready');
+        
+        // Show ready message
+        setTimeout(() => {
+            if (window.breatheMateAuth) {
+                window.breatheMateAuth.showMessage('🔓 Login system ready! Use demo credentials or create account.', 'success');
             }
-        } catch (error) {
-            console.log('🔐 Firebase unavailable, using simplified authentication');
-            window.breatheMateAuth = new SimplifiedAuth();
-            console.log('🔐 BreatheMate Simplified Authentication Initialized');
-        }
-    }, 1000);
+        }, 500);
+    }, 500);
 });
 
 // Global sign out function for other pages
