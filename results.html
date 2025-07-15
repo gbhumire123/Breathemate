@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Analysis Report</title>
+    <link rel="stylesheet" href="results-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBackToDashboard()">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+            
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="downloadReport()">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="header-btn" onclick="shareReport()">
+                    <i class="fas fa-share"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Report Header -->
+            <section class="report-header">
+                <div class="report-title">
+                    <h1>Breathing Analysis Report</h1>
+                    <p class="report-date" id="reportDate">July 15, 2025 • 2:34 PM</p>
+                </div>
+                <div class="report-status">
+                    <div class="status-badge" id="statusBadge">Analysis Complete</div>
+                </div>
+            </section>
+
+            <!-- Audio Waveform Preview -->
+            <section class="waveform-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-waveform-lines"></i>
+                        <h3>Audio Analysis</h3>
+                        <div class="audio-controls">
+                            <button class="play-btn" id="playBtn" onclick="toggleAudioPlayback()">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <span class="audio-duration">0:23</span>
+                        </div>
+                    </div>
+                    <div class="waveform-container">
+                        <canvas id="reportWaveform" width="800" height="120"></canvas>
+                        <div class="waveform-overlay">
+                            <div class="playback-indicator" id="playbackIndicator"></div>
+                        </div>
+                    </div>
+                    <div class="audio-info">
+                        <div class="audio-stat">
+                            <span class="stat-label">Quality:</span>
+                            <span class="stat-value">Good</span>
+                        </div>
+                        <div class="audio-stat">
+                            <span class="stat-label">Duration:</span>
+                            <span class="stat-value">23 seconds</span>
+                        </div>
+                        <div class="audio-stat">
+                            <span class="stat-label">Sample Rate:</span>
+                            <span class="stat-value">44.1 kHz</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Emergency Alert Section (shown for very high risk) -->
+            <section class="emergency-alert-section" id="emergencyAlertSection" style="display: none;">
+                <div class="emergency-alert-card">
+                    <div class="emergency-alert-header">
+                        <div class="emergency-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="emergency-content">
+                            <h3>🚨 High Risk Detected</h3>
+                            <p>Your breathing analysis shows concerning patterns that require immediate attention.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="emergency-actions">
+                        <button class="emergency-btn primary" onclick="showEmergencyAdvice()">
+                            <i class="fas fa-first-aid"></i>
+                            <span>See What to Do Now</span>
+                        </button>
+                        
+                        <div class="emergency-quick-actions">
+                            <button class="emergency-quick-btn" onclick="callEmergency()">
+                                <i class="fas fa-phone"></i>
+                                <span>Call 911</span>
+                            </button>
+                            
+                            <button class="emergency-quick-btn" onclick="findNearbyHospitals()">
+                                <i class="fas fa-hospital"></i>
+                                <span>Find Hospitals</span>
+                            </button>
+                            
+                            <button class="emergency-quick-btn" onclick="showEmergencyContacts()">
+                                <i class="fas fa-address-book"></i>
+                                <span>Emergency Contacts</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Risk Assessment Results -->
+            <section class="risk-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-shield-alt"></i>
+                        <h3>Risk Assessment</h3>
+                    </div>
+                    <div class="risk-content">
+                        <div class="risk-score-container">
+                            <div class="risk-circle" id="riskCircle">
+                                <div class="risk-percentage" id="riskPercentage">67%</div>
+                                <div class="risk-label">Risk Score</div>
+                            </div>
+                            <div class="risk-stage">
+                                <div class="stage-indicator medium" id="stageIndicator">
+                                    <span>Medium Risk</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="risk-details">
+                            <div class="condition-detected">
+                                <h4>Detected Condition</h4>
+                                <p id="detectedCondition">Possible Asthma Indicators</p>
+                            </div>
+                            <div class="confidence-level">
+                                <h4>Confidence Level</h4>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: 85%"></div>
+                                </div>
+                                <span class="confidence-text">85% Accurate</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Analysis -->
+            <section class="analysis-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>Detailed Analysis</h3>
+                    </div>
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <div class="analysis-icon breathing">
+                                <i class="fas fa-lungs"></i>
+                            </div>
+                            <div class="analysis-data">
+                                <h4>Breathing Pattern</h4>
+                                <p class="analysis-value" id="breathingPattern">Irregular</p>
+                                <p class="analysis-description">3 interruptions detected</p>
+                            </div>
+                        </div>
+                        
+                        <div class="analysis-item">
+                            <div class="analysis-icon voice">
+                                <i class="fas fa-microphone"></i>
+                            </div>
+                            <div class="analysis-data">
+                                <h4>Voice Quality</h4>
+                                <p class="analysis-value" id="voiceQuality">Strained</p>
+                                <p class="analysis-description">Mild vocal cord tension</p>
+                            </div>
+                        </div>
+                        
+                        <div class="analysis-item">
+                            <div class="analysis-icon airflow">
+                                <i class="fas fa-wind"></i>
+                            </div>
+                            <div class="analysis-data">
+                                <h4>Airflow Rate</h4>
+                                <p class="analysis-value" id="airflowRate">Below Normal</p>
+                                <p class="analysis-description">16 breaths per minute</p>
+                            </div>
+                        </div>
+                        
+                        <div class="analysis-item">
+                            <div class="analysis-icon duration">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="analysis-data">
+                                <h4>Pause Duration</h4>
+                                <p class="analysis-value" id="pauseDuration">Extended</p>
+                                <p class="analysis-description">Average 1.8 seconds</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Interpretation -->
+            <section class="interpretation-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-lightbulb"></i>
+                        <h3>Clinical Interpretation</h3>
+                    </div>
+                    <div class="interpretation-content">
+                        <div class="interpretation-text">
+                            <p id="shortInterpretation">
+                                Mild wheezing detected during exhalation phase. Analysis suggests possible early-stage asthma indicators with characteristic breathing pattern irregularities. The voice quality shows slight strain consistent with respiratory discomfort.
+                            </p>
+                        </div>
+                        <div class="recommendations">
+                            <h4>Recommendations</h4>
+                            <ul id="recommendationsList">
+                                <li>Consult with a pulmonologist for comprehensive evaluation</li>
+                                <li>Monitor breathing patterns daily using the app</li>
+                                <li>Consider avoiding known allergens and triggers</li>
+                                <li>Practice deep breathing exercises 2-3 times daily</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Breathing Exercise Recommendations -->
+            <section class="breathing-exercise-section" id="breathingExerciseSection">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-leaf"></i>
+                        <h3>Breathing Exercise Recommendations</h3>
+                    </div>
+                    <div class="exercise-content" id="exerciseContent">
+                        <!-- Content will be populated based on risk level -->
+                        <div class="exercise-message">
+                            <p id="exerciseMessage">Loading recommendations...</p>
+                        </div>
+                        
+                        <!-- Breathing Animation (shown for medium risk) -->
+                        <div class="breathing-animation-container" id="breathingAnimationContainer" style="display: none;">
+                            <div class="breathing-circle">
+                                <div class="breathing-text">
+                                    <span id="breathingInstruction">Inhale</span>
+                                    <div class="breathing-count" id="breathingCount">4</div>
+                                </div>
+                            </div>
+                            <div class="breathing-controls">
+                                <button class="breathing-btn start" id="startBreathingBtn" onclick="startBreathingExercise()">
+                                    <i class="fas fa-play"></i>
+                                    Start 3-Minute Exercise
+                                </button>
+                                <button class="breathing-btn stop" id="stopBreathingBtn" onclick="stopBreathingExercise()" style="display: none;">
+                                    <i class="fas fa-stop"></i>
+                                    Stop Exercise
+                                </button>
+                                <div class="exercise-timer" id="exerciseTimer" style="display: none;">
+                                    <span id="timerDisplay">3:00</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Exercise Tips -->
+                        <div class="exercise-tips" id="exerciseTips" style="display: none;">
+                            <h4>Exercise Tips:</h4>
+                            <ul>
+                                <li>Find a comfortable, quiet place to sit or lie down</li>
+                                <li>Place one hand on your chest, the other on your belly</li>
+                                <li>Breathe through your nose, focusing on your belly rising</li>
+                                <li>Follow the visual guide and count along</li>
+                                <li>If you feel dizzy, stop and breathe normally</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Comparison with Previous -->
+            <section class="comparison-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Progress Tracking</h3>
+                    </div>
+                    <div class="comparison-content">
+                        <div class="trend-chart">
+                            <canvas id="trendChart" width="600" height="200"></canvas>
+                        </div>
+                        <div class="comparison-stats">
+                            <div class="stat-item">
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>+5%</span>
+                                </div>
+                                <p>vs. Last Week</p>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-change negative">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span>-2%</span>
+                                </div>
+                                <p>vs. Last Month</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Symptom Tracker Integration -->
+            <section class="symptom-tracker-section">
+                <div class="symptom-tracker-card">
+                    <div class="symptom-tracker-header">
+                        <div class="tracker-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="tracker-content">
+                            <h3>Help Us Improve Your Analysis</h3>
+                            <p>Did you experience any of the following symptoms today?</p>
+                        </div>
+                    </div>
+                    
+                    <form class="symptom-form" id="symptomForm">
+                        <div class="symptoms-grid">
+                            <label class="symptom-checkbox">
+                                <input type="checkbox" value="coughing">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-lungs"></i>
+                                    Cough
+                                </span>
+                            </label>
+                            
+                            <label class="symptom-checkbox">
+                                <input type="checkbox" value="chest_tightness">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-heart"></i>
+                                    Chest tightness
+                                </span>
+                            </label>
+                            
+                            <label class="symptom-checkbox">
+                                <input type="checkbox" value="wheezing">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-wind"></i>
+                                    Wheezing
+                                </span>
+                            </label>
+                            
+                            <label class="symptom-checkbox">
+                                <input type="checkbox" value="shortness_of_breath">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Shortness of breath
+                                </span>
+                            </label>
+                            
+                            <label class="symptom-checkbox">
+                                <input type="checkbox" value="fatigue">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-battery-quarter"></i>
+                                    Fatigue
+                                </span>
+                            </label>
+                            
+                            <label class="symptom-checkbox no-symptoms">
+                                <input type="checkbox" value="none" id="noSymptomsCheck">
+                                <span class="checkmark">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="symptom-label">
+                                    <i class="fas fa-smile"></i>
+                                    No symptoms today
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div class="symptom-actions">
+                            <button type="button" class="btn secondary" onclick="skipSymptomTracker()">
+                                Skip for now
+                            </button>
+                            <button type="submit" class="btn primary">
+                                <i class="fas fa-save"></i>
+                                Log Symptoms
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="symptom-success" id="symptomSuccess" style="display: none;">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h4>Symptoms Logged Successfully!</h4>
+                        <p>This information will help improve future analysis accuracy.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Medical Disclaimer -->
+            <section class="disclaimer-section">
+                <div class="disclaimer-card">
+                    <div class="disclaimer-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="disclaimer-content">
+                        <h4>Medical Disclaimer</h4>
+                        <p>This analysis is approximately <strong>85% accurate</strong> and is intended for informational purposes only. It should not replace professional medical advice, diagnosis, or treatment. Always consult your healthcare provider for medical decisions.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <section class="action-section">
+                <div class="action-buttons">
+                    <button class="action-btn primary" onclick="saveToJournal()">
+                        <i class="fas fa-save"></i>
+                        <span>Save to Journal</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="downloadReport()">
+                        <i class="fas fa-download"></i>
+                        <span>Download PDF</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="shareReport()">
+                        <i class="fas fa-share"></i>
+                        <span>Share Report</span>
+                    </button>
+                    
+                    <button class="action-btn tertiary" onclick="scheduleFollowUp()">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Schedule Follow-up</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="results.js"></script>
+</body>
+</html>

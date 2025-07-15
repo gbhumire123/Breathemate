@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Dashboard</title>
+    <link rel="stylesheet" href="dashboard-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Profile Switcher (for caregiver mode) -->
+                <div class="profile-switcher-header" id="profileSwitcherHeader" style="display: none;">
+                    <button class="profile-switch-btn" onclick="openQuickProfileSwitcher()">
+                        <div class="current-profile-avatar" id="currentProfileAvatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="current-profile-info">
+                            <span class="current-profile-name" id="currentProfileName">Demo User</span>
+                            <span class="profile-count" id="profileCount">1 profile</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                
+                <!-- Notifications -->
+                <button class="notification-btn" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">3</span>
+                </button>
+                
+                <div class="profile-dropdown">
+                    <button class="profile-btn" onclick="toggleProfileMenu()">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="profile-name" id="profileName">Demo User</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    
+                    <div class="profile-menu" id="profileMenu">
+                        <a href="#" onclick="openProfile()">
+                            <i class="fas fa-user-cog"></i>
+                            Manage Account
+                        </a>
+                        <a href="#" onclick="openSettings()">
+                            <i class="fas fa-cog"></i>
+                            Settings
+                        </a>
+                        <div class="menu-divider"></div>
+                        <a href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <div class="welcome-content">
+                    <h1 class="welcome-title">
+                        Welcome back, <span id="userName">Demo User</span>! 👋
+                    </h1>
+                    <p class="welcome-subtitle">
+                        How are you feeling today? Let's monitor your lung health together.
+                    </p>
+                </div>
+                
+                <div class="welcome-illustration">
+                    <div class="breathing-animation">
+                        <i class="fas fa-lungs"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Summary -->
+            <section class="status-section">
+                <div class="status-grid">
+                    <div class="status-card risk-status">
+                        <div class="status-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="status-info">
+                            <h3>Current Risk</h3>
+                            <p class="status-value" id="riskStatus">No scan yet</p>
+                            <span class="status-note">Take your first breath test</span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card scan-status">
+                        <div class="status-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="status-info">
+                            <h3>Last Scan</h3>
+                            <p class="status-value" id="lastScan">Not available</p>
+                            <span class="status-note">Record your first breath test</span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card streak-status">
+                        <div class="status-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="status-info">
+                            <h3>Daily Streak</h3>
+                            <p class="status-value" id="dailyStreak">0 days</p>
+                            <span class="status-note">Start your health journey</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Action Buttons -->
+            <section class="actions-section">
+                <h2 class="section-title">Quick Actions</h2>
+                
+                <div class="actions-grid">
+                    <button class="action-card primary-action" onclick="recordBreath()">
+                        <div class="action-icon">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <div class="action-content">
+                            <h3>Record Breath</h3>
+                            <p>Start a new breathing test to monitor your lung health</p>
+                        </div>
+                        <div class="action-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="viewReport()">
+                        <div class="action-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="action-content">
+                            <h3>View Report</h3>
+                            <p>Check your breathing analysis and health insights</p>
+                        </div>
+                        <div class="action-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="openJournal()">
+                        <div class="action-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="action-content">
+                            <h3>Breathing Journal</h3>
+                            <p>Track your daily symptoms and breathing patterns</p>
+                        </div>
+                        <div class="action-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="viewTrends()">
+                        <div class="action-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="action-content">
+                            <h3>Health Trends</h3>
+                            <p>View your personal health progress over time</p>
+                        </div>
+                        <div class="action-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="openSettings()">
+                        <div class="action-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="action-content">
+                            <h3>Settings</h3>
+                            <p>Customize your preferences and notifications</p>
+                        </div>
+                        <div class="action-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Quick Tips Section -->
+            <section class="tips-section">
+                <h2 class="section-title">Health Tips</h2>
+                
+                <div class="tips-container">
+                    <div class="tip-card">
+                        <div class="tip-icon">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <div class="tip-content">
+                            <h4>Deep Breathing Exercise</h4>
+                            <p>Practice 4-7-8 breathing: Inhale for 4, hold for 7, exhale for 8 seconds.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <div class="tip-icon">
+                            <i class="fas fa-walking"></i>
+                        </div>
+                        <div class="tip-content">
+                            <h4>Stay Active</h4>
+                            <p>Regular cardio exercise strengthens your respiratory muscles.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <div class="tip-icon">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <div class="tip-content">
+                            <h4>Stay Hydrated</h4>
+                            <p>Proper hydration helps keep your airways moist and healthy.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3>
+            <button onclick="toggleNotifications()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notification-list">
+            <div class="notification-item">
+                <div class="notification-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="notification-content">
+                    <h4>Daily Reminder</h4>
+                    <p>Time for your daily breathing check!</p>
+                    <span class="notification-time">2 hours ago</span>
+                </div>
+            </div>
+            <div class="notification-item">
+                <div class="notification-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="notification-content">
+                    <h4>Weekly Report Ready</h4>
+                    <p>Your breathing analysis report is available.</p>
+                    <span class="notification-time">1 day ago</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay" onclick="closeAllDropdowns()"></div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

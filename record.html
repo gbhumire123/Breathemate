@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Record & Analyze</title>
+    <link rel="stylesheet" href="record-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBackToDashboard()">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+            
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-spacer"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            
+            <!-- Recording Section -->
+            <section class="recording-section" id="recordingSection">
+                <div class="mic-container">
+                    <div class="mic-animation" id="micAnimation">
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-ring-2"></div>
+                        <div class="mic-icon">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="recording-status">
+                        <h2 id="recordingStatus">Ready to Record</h2>
+                        <p id="recordingSubtext">Click start when you're ready to begin</p>
+                    </div>
+                    
+                    <!-- Audio Waveform Visualization -->
+                    <div class="waveform-container" id="waveformContainer">
+                        <canvas id="waveformCanvas" width="400" height="100"></canvas>
+                    </div>
+                </div>
+
+                <!-- Prompt Section -->
+                <div class="prompt-section" id="promptSection">
+                    <div class="prompt-card">
+                        <h3>Please read the following sentence clearly:</h3>
+                        <p class="prompt-text" id="promptText">
+                            "The air is fresh and clean today, and I feel calm and relaxed while taking deep breaths."
+                        </p>
+                        <div class="prompt-instruction">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Read at a normal pace, then take a deep breath and slowly exhale</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="controls-section">
+                    <button class="control-btn start-btn" id="startBtn" onclick="startRecording()">
+                        <i class="fas fa-play"></i>
+                        <span>Start Recording</span>
+                    </button>
+                    
+                    <button class="control-btn stop-btn" id="stopBtn" onclick="stopRecording()" disabled>
+                        <i class="fas fa-stop"></i>
+                        <span>Stop Recording</span>
+                    </button>
+                    
+                    <button class="control-btn upload-btn" id="uploadBtn" onclick="uploadAudio()">
+                        <i class="fas fa-upload"></i>
+                        <span>Upload Audio</span>
+                    </button>
+                    
+                    <input type="file" id="audioFileInput" accept=".wav,.mp3,.m4a" style="display: none;">
+                </div>
+
+                <!-- Recording Timer -->
+                <div class="timer-section" id="timerSection">
+                    <div class="timer-display">
+                        <span id="timerDisplay">00:00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analysis Loading Section -->
+            <section class="analysis-loading" id="analysisLoading" style="display: none;">
+                <div class="loading-animation">
+                    <div class="breathing-loader">
+                        <div class="breath-circle"></div>
+                        <i class="fas fa-lungs"></i>
+                    </div>
+                    <h2>Analyzing your breath...</h2>
+                    <p>Processing audio patterns and breathing indicators</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </section>
+
+            <!-- Analysis Results Section -->
+            <section class="analysis-results" id="analysisResults" style="display: none;">
+                <div class="results-header">
+                    <h2>Analysis Complete</h2>
+                    <p>Here's what we found from your breath recording</p>
+                </div>
+
+                <!-- Risk Analysis -->
+                <div class="analysis-card risk-analysis">
+                    <div class="card-header">
+                        <i class="fas fa-shield-alt"></i>
+                        <h3>Risk Analysis</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="risk-percentage">
+                            <div class="risk-circle" id="riskCircle">
+                                <span class="risk-value" id="riskValue">67%</span>
+                                <span class="risk-label">Risk Level</span>
+                            </div>
+                        </div>
+                        <div class="risk-details">
+                            <div class="risk-item">
+                                <strong>Detected Condition:</strong>
+                                <span id="detectedCondition">Possible Asthma Indicators</span>
+                            </div>
+                            <div class="risk-item">
+                                <strong>Risk Stage:</strong>
+                                <span class="risk-badge medium" id="riskStage">Medium</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Breakdown -->
+                <div class="analysis-card audio-breakdown">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>Audio Breakdown</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <div class="breakdown-value" id="breathInterruptions">3</div>
+                                <div class="breakdown-label">Breath Interruptions</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-value" id="avgPauseDuration">1.8s</div>
+                                <div class="breakdown-label">Avg Pause Duration</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-value" id="voiceIrregularities">Yes</div>
+                                <div class="breakdown-label">Voice Irregularities</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-value" id="breathingRate">16/min</div>
+                                <div class="breakdown-label">Breathing Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Reference -->
+                <div class="analysis-card audio-reference">
+                    <div class="card-header">
+                        <i class="fas fa-database"></i>
+                        <h3>Audio Reference</h3>
+                    </div>
+                    <div class="card-content">
+                        <p>Your recording was compared against 100+ real patient samples of:</p>
+                        <div class="reference-tags">
+                            <span class="reference-tag">Asthma</span>
+                            <span class="reference-tag">COPD</span>
+                            <span class="reference-tag">Wheezing</span>
+                            <span class="reference-tag">Breathlessness</span>
+                            <span class="reference-tag">Normal Breathing</span>
+                        </div>
+                        <p class="reference-note">
+                            AI analysis includes frequency patterns, breath intervals, voice modulation, and audio quality indicators.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="disclaimer-card">
+                    <div class="disclaimer-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="disclaimer-content">
+                        <h4>Medical Disclaimer</h4>
+                        <p>This result is approximately <strong>85% accurate</strong>. For any medical decisions or concerns about your respiratory health, please consult your doctor or healthcare provider.</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="action-btn primary" onclick="tryAgain()">
+                        <i class="fas fa-redo"></i>
+                        <span>Try Again</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="saveToJournal()">
+                        <i class="fas fa-save"></i>
+                        <span>Save to Journal</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="shareReport()">
+                        <i class="fas fa-share"></i>
+                        <span>Share Report</span>
+                    </button>
+                    
+                    <button class="action-btn tertiary" onclick="goBackToDashboard()">
+                        <i class="fas fa-home"></i>
+                        <span>Back to Dashboard</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="record.js"></script>
+</body>
+</html>

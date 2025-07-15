@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Settings</title>
+    <link rel="stylesheet" href="settings-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBackToDashboard()">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+            
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-spacer"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Settings Header -->
+            <section class="settings-header">
+                <h1>Settings</h1>
+                <p>Customize your BreatheMate experience</p>
+            </section>
+
+            <!-- Settings Sections -->
+            <div class="settings-container">
+                <!-- Account Settings -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-user-cog"></i>
+                        <h2>Account Settings</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Profile Information</h3>
+                                <p>Update your personal information and preferences</p>
+                            </div>
+                            <button class="setting-action" onclick="editProfile()">
+                                <span>Edit</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Email Address</h3>
+                                <p id="userEmail">demo@breathemate.com</p>
+                            </div>
+                            <button class="setting-action" onclick="changeEmail()">
+                                <span>Change</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Password</h3>
+                                <p>Last updated 30 days ago</p>
+                            </div>
+                            <button class="setting-action" onclick="changePassword()">
+                                <span>Change</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- User Management (Multi-Profile) -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-users"></i>
+                        <h2>User Management</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Current User</h3>
+                                <p id="currentUserInfo">Demo User (demo@breathemate.com)</p>
+                            </div>
+                            <button class="setting-action" onclick="openProfileSwitcher()">
+                                <span>Switch Profile</span>
+                                <i class="fas fa-user-circle"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Manage Profiles</h3>
+                                <p>Add family members or manage existing user profiles</p>
+                            </div>
+                            <button class="setting-action" onclick="openUserManagement()">
+                                <span>Manage</span>
+                                <i class="fas fa-users-cog"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Add New User</h3>
+                                <p>Create a new profile for family member or patient</p>
+                            </div>
+                            <button class="setting-action primary" onclick="openAddUserModal()">
+                                <span>Add User</span>
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Caregiver Mode</h3>
+                                <p>Enable additional features for caregivers managing multiple profiles</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="caregiverMode">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Notification Settings -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-bell"></i>
+                        <h2>Notifications</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Daily Reminders</h3>
+                                <p>Get reminded to take your daily breathing test</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="dailyReminders" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Daily Reminder Time Setting -->
+                        <div class="setting-item daily-reminder-time" id="dailyReminderTimeItem">
+                            <div class="setting-info">
+                                <h3>Reminder Time</h3>
+                                <p>Choose when you'd like to be reminded daily</p>
+                            </div>
+                            <div class="time-selector">
+                                <input type="time" id="dailyReminderTime" value="09:00" class="setting-time">
+                                <button class="test-notification-btn" onclick="testDailyReminder()">
+                                    <i class="fas fa-bell"></i>
+                                    Test
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Health Alerts</h3>
+                                <p>Receive notifications about concerning breathing patterns</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="healthAlerts" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Weekly Reports</h3>
+                                <p>Get weekly summaries of your breathing health</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="weeklyReports" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>App Updates</h3>
+                                <p>Notifications about new features and improvements</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="appUpdates">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Recording Preferences -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-microphone"></i>
+                        <h2>Recording Preferences</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Auto-save Recordings</h3>
+                                <p>Automatically save completed breathing tests</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoSave" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Recording Quality</h3>
+                                <p>Higher quality provides better analysis accuracy</p>
+                            </div>
+                            <select class="setting-select" id="recordingQuality">
+                                <option value="standard">Standard Quality</option>
+                                <option value="high" selected>High Quality</option>
+                                <option value="premium">Premium Quality</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Microphone Sensitivity</h3>
+                                <p>Adjust microphone sensitivity for your environment</p>
+                            </div>
+                            <div class="range-container">
+                                <input type="range" class="setting-range" id="micSensitivity" min="1" max="10" value="7">
+                                <span class="range-value">7</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Privacy & Data -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-shield-alt"></i>
+                        <h2>Privacy & Data</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Data Collection</h3>
+                                <p>Allow anonymous usage data to improve our services</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="dataCollection">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Share with Healthcare Providers</h3>
+                                <p>Allow sharing of analysis results with your doctor</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="shareWithDoctors">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Export Data</h3>
+                                <p>Download all your breathing data and analysis history</p>
+                            </div>
+                            <button class="setting-action" onclick="exportAllData()">
+                                <span>Export</span>
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item danger">
+                            <div class="setting-info">
+                                <h3>Delete Account</h3>
+                                <p>Permanently delete your account and all associated data</p>
+                            </div>
+                            <button class="setting-action danger" onclick="deleteAccount()">
+                                <span>Delete</span>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- App Preferences -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-palette"></i>
+                        <h2>App Preferences</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Theme</h3>
+                                <p>Choose your preferred app appearance</p>
+                            </div>
+                            <select class="setting-select" id="theme">
+                                <option value="light" selected>Light Theme</option>
+                                <option value="dark">Dark Theme</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Language</h3>
+                                <p>Select your preferred language</p>
+                            </div>
+                            <select class="setting-select" id="language">
+                                <option value="en" selected>English</option>
+                                <option value="es">Español</option>
+                                <option value="fr">Français</option>
+                                <option value="de">Deutsch</option>
+                                <option value="zh">中文</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Date Format</h3>
+                                <p>Choose how dates are displayed</p>
+                            </div>
+                            <select class="setting-select" id="dateFormat">
+                                <option value="mm/dd/yyyy" selected>MM/DD/YYYY</option>
+                                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                                <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Time Format</h3>
+                                <p>Choose 12-hour or 24-hour time format</p>
+                            </div>
+                            <select class="setting-select" id="timeFormat">
+                                <option value="12" selected>12 Hour (AM/PM)</option>
+                                <option value="24">24 Hour</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Help & Support -->
+                <section class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-question-circle"></i>
+                        <h2>Help & Support</h2>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Help Center</h3>
+                                <p>Browse frequently asked questions and guides</p>
+                            </div>
+                            <button class="setting-action" onclick="openHelpCenter()">
+                                <span>Visit</span>
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Contact Support</h3>
+                                <p>Get help from our support team</p>
+                            </div>
+                            <button class="setting-action" onclick="contactSupport()">
+                                <span>Contact</span>
+                                <i class="fas fa-envelope"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Privacy Policy</h3>
+                                <p>Read our privacy policy and terms of service</p>
+                            </div>
+                            <button class="setting-action" onclick="openPrivacyPolicy()">
+                                <span>Read</span>
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>App Version</h3>
+                                <p>BreatheMate v2.1.0 (Build 2024.07.15)</p>
+                            </div>
+                            <button class="setting-action" onclick="checkForUpdates()">
+                                <span>Check Updates</span>
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="settings.js"></script>
+</body>
+</html>

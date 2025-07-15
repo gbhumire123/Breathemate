@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Health Trends</title>
+    <link rel="stylesheet" href="trends-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBackToDashboard()">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+            
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="exportTrendReport()">
+                    <i class="fas fa-download"></i>
+                    <span>Export</span>
+                </button>
+                <button class="header-btn" onclick="shareTrendReport()">
+                    <i class="fas fa-share"></i>
+                    <span>Share</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Trends Header -->
+            <section class="trends-header">
+                <div class="header-content-section">
+                    <h1>Personal Health Trends</h1>
+                    <p>Track your breathing health progress over time</p>
+                </div>
+                <div class="date-range-selector">
+                    <select id="dateRange" onchange="updateDateRange()">
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Overall Trend Summary -->
+            <section class="trend-summary-section">
+                <div class="summary-grid">
+                    <div class="summary-card trend-direction">
+                        <div class="summary-icon" id="trendIcon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="summary-content">
+                            <h3>Overall Trend</h3>
+                            <p class="summary-value" id="trendDirection">Improving</p>
+                            <span class="summary-note" id="trendNote">5% improvement this month</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card current-risk">
+                        <div class="summary-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="summary-content">
+                            <h3>Current Risk Level</h3>
+                            <p class="summary-value" id="currentRisk">Medium</p>
+                            <span class="summary-note" id="riskChange">Down from High risk</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card consistency">
+                        <div class="summary-icon">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="summary-content">
+                            <h3>Testing Consistency</h3>
+                            <p class="summary-value" id="testingFrequency">85%</p>
+                            <span class="summary-note">Regular monitoring helps accuracy</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card best-day">
+                        <div class="summary-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="summary-content">
+                            <h3>Best Performance</h3>
+                            <p class="summary-value" id="bestDay">3 days ago</p>
+                            <span class="summary-note" id="bestScore">15% risk level</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Risk Percentage Chart -->
+            <section class="chart-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <div class="header-left">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>Risk Percentage Over Time</h3>
+                        </div>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-type="line" onclick="switchChartType('line')">
+                                <i class="fas fa-chart-line"></i>
+                                Line
+                            </button>
+                            <button class="chart-btn" data-type="bar" onclick="switchChartType('bar')">
+                                <i class="fas fa-chart-bar"></i>
+                                Bar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="riskChart" width="800" height="400"></canvas>
+                        <div class="chart-legend">
+                            <div class="legend-item">
+                                <div class="legend-color low-risk"></div>
+                                <span>Low Risk (0-33%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color medium-risk"></div>
+                                <span>Medium Risk (34-66%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color high-risk"></div>
+                                <span>High Risk (67-100%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Daily Progress Analysis -->
+            <section class="progress-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>Daily Progress Analysis</h3>
+                    </div>
+                    <div class="progress-timeline" id="progressTimeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Health Insights -->
+            <section class="insights-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-lightbulb"></i>
+                        <h3>Health Insights & Patterns</h3>
+                    </div>
+                    <div class="insights-grid">
+                        <div class="insight-card pattern-analysis">
+                            <div class="insight-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Pattern Detection</h4>
+                                <p id="patternInsight">Your breathing improves significantly on weekends, suggesting stress may be a factor during weekdays.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="insight-card correlation">
+                            <div class="insight-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Correlation Analysis</h4>
+                                <p id="correlationInsight">Regular testing (every 2-3 days) shows 23% better outcomes compared to irregular testing.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="insight-card prediction">
+                            <div class="insight-icon">
+                                <i class="fas fa-crystal-ball"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Trend Prediction</h4>
+                                <p id="predictionInsight">Based on current trends, you're likely to achieve low-risk status within the next 2 weeks.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Personalized Suggestions -->
+            <section class="suggestions-section">
+                <div class="section-card">
+                    <div class="card-header">
+                        <i class="fas fa-brain"></i>
+                        <h3>Personalized Suggestions</h3>
+                    </div>
+                    <div class="suggestions-container" id="suggestionsContainer">
+                        <!-- Suggestions will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <section class="action-section">
+                <div class="action-buttons">
+                    <button class="action-btn primary" onclick="recordNewTest()">
+                        <i class="fas fa-microphone"></i>
+                        <span>Record New Test</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="openJournal()">
+                        <i class="fas fa-book"></i>
+                        <span>View Journal</span>
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="setReminder()">
+                        <i class="fas fa-bell"></i>
+                        <span>Set Reminder</span>
+                    </button>
+                    
+                    <button class="action-btn tertiary" onclick="shareWithDoctor()">
+                        <i class="fas fa-user-md"></i>
+                        <span>Share with Doctor</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="trends.js"></script>
+</body>
+</html>

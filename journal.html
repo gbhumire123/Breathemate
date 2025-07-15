@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BreatheMate - Breathing Journal</title>
+    <link rel="stylesheet" href="journal-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBackToDashboard()">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+            
+            <div class="logo">
+                <i class="fas fa-lungs"></i>
+                <h2>BreatheMate</h2>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="exportJournal()">
+                    <i class="fas fa-download"></i>
+                    <span>Export</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Journal Header -->
+            <section class="journal-header">
+                <div class="header-content-section">
+                    <h1>Breathing Journal</h1>
+                    <p>Track your daily symptoms and breathing patterns</p>
+                </div>
+                <button class="add-entry-btn" onclick="openAddEntryModal()">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Entry</span>
+                </button>
+            </section>
+
+            <!-- Filter Controls -->
+            <section class="filter-section">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="riskFilter">Risk Stage:</label>
+                        <select id="riskFilter" onchange="applyFilters()">
+                            <option value="all">All Stages</option>
+                            <option value="low">Low Risk</option>
+                            <option value="medium">Medium Risk</option>
+                            <option value="high">High Risk</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="dateFilter">Date Range:</label>
+                        <select id="dateFilter" onchange="applyFilters()">
+                            <option value="all">All Time</option>
+                            <option value="week">Last Week</option>
+                            <option value="month">Last Month</option>
+                            <option value="3months">Last 3 Months</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="typeFilter">Entry Type:</label>
+                        <select id="typeFilter" onchange="applyFilters()">
+                            <option value="all">All Types</option>
+                            <option value="breath_analysis">Breath Analysis</option>
+                            <option value="manual_entry">Manual Entry</option>
+                            <option value="symptoms">Symptoms</option>
+                        </select>
+                    </div>
+                    
+                    <button class="clear-filters-btn" onclick="clearFilters()">
+                        <i class="fas fa-times"></i>
+                        Clear Filters
+                    </button>
+                </div>
+                
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search entries..." onkeyup="searchEntries()">
+                </div>
+            </section>
+
+            <!-- Statistics Summary -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Total Entries</h3>
+                            <p class="stat-value" id="totalEntries">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Average Risk</h3>
+                            <p class="stat-value" id="averageRisk">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Current Streak</h3>
+                            <p class="stat-value" id="currentStreak">0 days</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>High Risk Days</h3>
+                            <p class="stat-value" id="highRiskDays">0</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Journal Entries -->
+            <section class="entries-section">
+                <div class="section-header">
+                    <h2>Journal Entries</h2>
+                    <span class="entry-count" id="entryCount">0 entries</span>
+                </div>
+                
+                <div class="entries-container" id="entriesContainer">
+                    <!-- Entries will be populated by JavaScript -->
+                </div>
+                
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <h3>No journal entries yet</h3>
+                    <p>Start tracking your breathing patterns by recording your first breath test or adding a manual entry.</p>
+                    <button class="action-btn primary" onclick="goToRecord()">
+                        <i class="fas fa-microphone"></i>
+                        Record Breath Test
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Add Entry Modal -->
+    <div class="modal-overlay" id="modalOverlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Manual Entry</h3>
+                <button class="close-modal-btn" onclick="closeAddEntryModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form class="modal-form" id="addEntryForm">
+                <div class="form-group">
+                    <label for="entryDate">Date & Time</label>
+                    <input type="datetime-local" id="entryDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="entryType">Entry Type</label>
+                    <select id="entryType" required>
+                        <option value="symptoms">Symptoms</option>
+                        <option value="manual_entry">General Entry</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="symptoms">Symptoms (select all that apply)</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="shortness_of_breath">
+                            <span class="checkmark"></span>
+                            Shortness of breath
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="wheezing">
+                            <span class="checkmark"></span>
+                            Wheezing
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="chest_tightness">
+                            <span class="checkmark"></span>
+                            Chest tightness
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="coughing">
+                            <span class="checkmark"></span>
+                            Coughing
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="fatigue">
+                            <span class="checkmark"></span>
+                            Fatigue
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="anxiety">
+                            <span class="checkmark"></span>
+                            Anxiety
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="severity">Severity Level</label>
+                    <select id="severity">
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="triggers">Possible Triggers</label>
+                    <input type="text" id="triggers" placeholder="e.g., exercise, allergens, stress...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="entryNotes">Notes</label>
+                    <textarea id="entryNotes" rows="4" placeholder="Add any additional notes about your breathing..."></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary" onclick="closeAddEntryModal()">Cancel</button>
+                    <button type="submit" class="btn primary">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Entry Detail Modal -->
+    <div class="modal-overlay" id="detailModalOverlay" style="display: none;">
+        <div class="modal detail-modal">
+            <div class="modal-header">
+                <h3>Entry Details</h3>
+                <button class="close-modal-btn" onclick="closeDetailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-content" id="detailModalContent">
+                <!-- Entry details will be populated by JavaScript -->
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn secondary" onclick="closeDetailModal()">Close</button>
+                <button type="button" class="btn primary" onclick="editEntry()" id="editEntryBtn">
+                    <i class="fas fa-edit"></i>
+                    Edit Entry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="journal.js"></script>
+</body>
+</html>
